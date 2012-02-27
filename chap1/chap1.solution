@@ -1,0 +1,1229 @@
+1.2
+(/ (+ 5 4 (- 2 (- 3 (+ 6 (/ 4 5)))))
+   (* 3 (- 6 2) (- 2 7)))
+
+
+
+1.3
+(define (min x y z)
+  (if (< x y)
+     (if (< x z) x z)
+	 (if (< y z) y z)))
+
+(define (square x)
+   (* x x))
+
+(define (square-sum-of-bigger-two x y z)
+   (- (+ (square x) (square y) (square z))
+	  (square (min x y z))))
+
+
+
+1.5
+Applicative-order evaluation will go into an infinite loop since in that way the interpreter will try to evaluate the argument (p), which leads to endless recursion.
+
+Normal-order evaluation will give the expected result since the interpreter firstly expands the combination as (if (= 0 0) 0 (p)), which is an 'if' special form that will be evaluted properly.
+
+
+
+1.6
+Since 'new-if' is a compound procedure, when applicative-order evaluation is used, the interpreter will firstly evaluate all the arguments. But the second argument is a recursive call of procedure 'sqrt-iter', which leads to endless recursion.
+
+
+
+1.7
+The iteration will end if |g^2 - x| < 0.001 is satisfied. If x is too small, 0.001 would be a relatively large number to x, so that the range of error tolerance is large and many guesses will pass the test even they are poor.
+
+Large floading-point numbers are represented in the computer with limited precision. Hence we cannot reach the expected precision of 0.001 when evaluating the difference of two such numbers. The program may never pass the test so that it will go into an infinite loop.
+
+(define (good-enough? prev-guess guess x)
+   (< (abs (- guess prev-guess)) (* guess 0.001)))
+
+1.8
+(define (cube-root-iter prev-guess guess x)
+  (if (good-enough? prev-guess guess x)
+      guess
+      (cube-root-iter guess (improve guess x) x)))
+
+(define (improve guess x)
+  (average3 (/ x (square guess)) guess guess))
+
+(define (average3 x y z)
+  (/ (+ x y z) 3))
+
+(define (good-enough? prev-guess guess x)
+  (< (abs (- guess prev-guess)) (* (abs guess) 0.001)))
+
+(define (square x)
+  (* x x))
+
+(define (cube-root x)
+  (cube-root-iter 0 1 x))
+
+
+
+1.2 Procedures and the Processes They Generate
+-----------------------------------------------------
+1.9
+Applying the first procedure, we obtain:
+(+ 4 5)
+(inc (+ 3 5))
+(inc (inc (+ 2 5)))
+(inc (inc (inc (+ 1 5))))
+(inc (inc (inc (inc (+ 0 5)))))
+(inc (inc (inc (inc 5))))
+(inc (inc (inc 6)))
+(inc (inc 7))
+(inc 8)
+9
+which is a recursive process.
+
+Applying the second procedure, we obtain:
+(+ 4 5)
+(+ 3 6)
+(+ 2 7)
+(+ 1 8)
+(+ 0 9)
+9
+which is a iterative process.
+
+
+
+1.10
+(A 1 10) = 1024
+(A 2 4) = 65536
+(A 3 3) = 65536
+
+f returns 2*n, g returns 2^n and h returns 2^2^...^2 (n 2s).
+
+
+
+1.11
+; Recursive solution
+(define (sum n)
+  (if (< n 3)
+      n
+      (+ (sum (- n 1))
+         (* (sum (- n 2)) 2)
+         (* (sum (- n 3)) 3))))
+
+; Iterative solution
+(define (another-sum n)
+  (define (sum-iter a b c count)
+    (if (= count 0)
+        a
+        (sum-iter b c (+ c
+                         (* b 2)
+                         (* a 3)) (- count 1))))
+  (sum-iter 0 1 2 n))
+
+
+
+1.12
+(define (pascal-triangle line k)
+  (cond ((or (< k 1) (> k line)) -1)
+        ((or (= k 1) (= k line)) 1)
+        (else (+ (pascal-triangle (- line 1)
+                                  (- k 1))
+                 (pascal-triangle (- line 1)
+                                  k)))))
+
+
+
+1.13
+Fibonacci sequence is a linear homogeneous recurrence relation with constant coefficients of order 2. The Characteristic equation is:
+r^2 - r - 1 = 0
+whose roots are (1 + sqrt(5)) / 2 and (1 - sqrt(5)) / 2. With Fib(0) = 0 and Fib(1) = 1, we obtain:
+Fib(n) = 1/sqrt(5) * (1 + sqrt(5)) / 2 - 1/sqrt(5) * (1 - sqrt(5)) / 2
+Denote phi = (1 + sqrt(5)) / 2, psi = (1 - sqrt(5)) / 2, then
+|psi^2| / sqrt(5) < 1/sqrt(5) < 1/2, so
+Fib(n) is the closest integer to 1/sqrt(5) * phi^2
+
+
+
+1.14
+Space grows by O(n) while time consumption grows by O(n^5).
+
+
+
+1.15
+Calling (sine 12.15) will yield: (using substitution model)
+(p (sine 4.05))
+(p (p (sine 1.35)))
+(p (p (p (sine 0.45))))
+(p (p (p (p (sine 0.15)))))
+(p (p (p (p (p (sine 0.05))))))
+(p (p (p (p (p 0.05)))))
+So procedure 'p' will be called 5 times.
+Time and space complexity are all O(log(3, n))
+
+
+
+1.16
+(define (fast-exp base n)
+   (define (even? x)
+      (= (remainder x 2) 0))
+
+   (define (square x)
+      (* x x))
+
+   (define (fast-exp-iter result base n)
+      (cond ((= n 0) result)
+            ((even? n) (fast-exp-iter result
+	                              (square base)
+	                              (/ n 2)))
+            (else (fast-exp-iter (* result base)
+	                         base
+	      			 (- n 1)))))
+
+   (fast-exp-iter 1 base n))
+
+
+
+1.17
+(define (double x)
+   (* x 2))
+(define (halve x)
+   (/ x 2))
+(define (mult factor times)
+   (cond ((= times 0) 0)
+         ((even? times) (double (mult factor
+	                              (halve times))))
+	 (else (+ factor
+	          (mult factor (- times 1))))))
+
+
+
+1.18
+(define (mult factor times)
+   (define (double x)
+      (* x 2))
+   (define (halve x)
+      (/ x 2))
+   (define (mult-iter result factor times)
+      (cond ((= times 0) result)
+            ((even? times) (mult-iter result
+                                      (double factor)
+				      (halve times)))
+	    (else (mult-iter (+ result factor)
+	                     factor
+	                     (- times 1)))))
+   (mult-iter 0 factor times))
+
+
+
+1.19
+According to the fact that performing transformation Tpq twice has the same effect as performing Tp'q' once, it's easy to solve p' and q' in terms of p and q:
+p' = p^2 + q^2
+q' = 2pq + q^2
+
+Therefore the code is:
+
+(define (square x)
+   (* x x))
+(define (fib n)
+   (fib-iter 1 0 0 1 n))
+(define (fib-iter a b p q count)
+   (cond ((= count 0) b)
+         ((even? count) (fib-iter a
+	                          b
+	                          (+ (square p) (square q))
+	                          (+ (* 2 p q) (square q))
+		                  (/ count 2)))
+         (else (fib-iter (+ (* b q) (* a q) (* a p))
+	                 (+ (* b p) (* a q))
+	                 p
+	                 q
+	                 (- count 1)))))
+
+
+
+1.20
+Here we write (a b) instead of (gcd a b) and (% a b) instead of (remainder a b) for simplicity.
+
+Applying normal-order evaluation, we obtain this fucking sequence:
+(206 40)
+Step 1:
+(40 (% 206 40)) --> 1 operation
+Step 2:
+((% 206 40) (% 40 (% 206 40))) --> 2 oprations
+Step 3:
+((% 40 (% 206 40)) (% (% 206 40) (% 40 (% 206 40)))) --> 4 operations
+Step 4:
+((% (% 206 40) (% 40 (% 206 40))) 
+ (% (% 40 (% 206 40)) 
+    (% (% 206 40) (% 40 (% 206 40))))) --> 7+4=11 operations
+Hence there will be 18 'remainder' procedure calls.
+
+Applying applicative-order evaluation, we obtain the sequence:
+(206 40) --> (40 (% 206 40)) --> (40 6) --> 1 operation
+(40 6) --> (6 (% 40 6 )) --> (6 4) --> 1 operation
+(6 4) --> (4 (% 6 4)) --> (4 2) --> 1 operation
+(4 2) --> (2 (% 4 2)) --> (2 0) --> 1 operation
+Hence there will be 4 'remainder' procedure calls.
+
+
+
+1.21
+(smallest-divisor 199) = 199
+(smallest-divisor 1999) = 1999
+(smallest-divisor 19999) = 7
+
+
+
+1.22 
+Since there's no primitive 'runtime' procedure in DrRacket, we may use the definition:
+(define runtime current-milliseconds)
+to let things go. When I was working on this problem, I found that if I wrote a loop to test each number with 'timed-prime-test' procedure, I cannot know the result since it doesn't return a boolean value. So I modified the procedure 'start-prime-test':
+
+(define (start-prime-test n start-time)
+   (cond ((prime? n) (report-prime (- (runtime) start-time)) #t)
+         (else #f)))
+
+Then it can be used to implement our searching procedure:
+
+; Start searching from an odd number
+(define (search-for-primes lower-bound)
+   (if (even? lower-bound)
+       (search-iter (+ lower-bound 1) 0)
+       (search-iter lower-bound 0)))
+
+(define (search-iter x counter)
+   (cond ((= counter 3) (newline) 
+                        (display "done"))
+         ((timed-prime-test x) (search-iter (+ x 2) (+ counter 1)))
+	 (else (search-iter (+ x 2) counter))))
+
+We need to verify the 'sqrt(10)' prediction with some large numbers since our computer today is much faster than the ones back then.
+
+> (search-for-primes 1000000000)
+
+1000000007 --> 12
+1000000009 --> 12
+1000000021 --> 13
+done
+
+> (search-for-primes 10000000000)
+
+10000000019 --> 148
+10000000033 --> 148
+10000000061 --> 182
+done
+
+> (search-for-primes 100000000000)
+
+100000000003 --> 585
+100000000019 --> 521
+100000000057 --> 527
+done
+
+> (search-for-primes 1000000000000)
+
+1000000000039 --> 1635
+1000000000061 --> 1625
+1000000000063 --> 1583
+done
+
+> (search-for-primes 10000000000000)
+
+10000000000037 --> 5216
+10000000000051 --> 5130
+10000000000099 --> 5390
+done
+
+We can easily calculate that the milliseconds consumed by the procedure grows at the rate of sqrt(10) as the size of the problem grows 10 times larger.
+
+
+
+1.23
+Code:
+
+; Find the smallest divisor of n
+(define (smallest-divisor n)
+  (define (next test-factor)
+    (if (= test-factor 2)
+        3
+        (+ test-factor 2)))
+  
+  (define (divides? test-factor)
+    (= (remainder n test-factor) 0))
+  
+  (define (square n)
+    (* n n))
+  
+  (define (find-divisor test-factor)
+    (cond ((> (square test-factor) n) n)
+          ((divides? test-factor) test-factor)
+          (else (find-divisor (next test-factor)))))
+  
+  (find-divisor 2))
+
+; Normal prime testing procedure
+(define (prime? n)
+  (= n (smallest-divisor n)))
+
+; Check if n is prime with time measurement
+(define (timed-prime-test n)
+  (define runtime current-milliseconds)
+  
+  (define (start-prime-test start-time)
+    (cond ((prime? n) (report-time (- (runtime) start-time)) #t)
+          (else #f)))
+  
+  (define (report-time elapsed-time)
+    (display " --> ")
+    (display elapsed-time))
+  
+  (newline)
+  (display n)
+  (start-prime-test (runtime)))
+
+; Seeking for 3 smallest primes
+(define (search-for-primes lower-bound)
+  (define (search-iter num count)
+    (cond ((= count 3) (newline) (display "done"))
+          ((timed-prime-test num) (search-iter (+ num 2) (+ count 1)))
+          (else (search-iter (+ num 2) count))))
+  
+  (if (even? lower-bound) 
+      (search-iter (+ lower-bound 1) 0)
+      (search-iter lower-bound 0)))
+
+Run it again with the same input as the previous problem:
+> (search-for-primes 1000000000)
+
+1000000007 --> 7
+1000000009 --> 7
+1000000021 --> 7
+done
+
+> (search-for-primes 10000000000)
+
+10000000019 --> 70
+10000000033 --> 72
+10000000061 --> 70
+done
+
+> (search-for-primes 100000000000)
+
+100000000003 --> 248
+100000000019 --> 299
+100000000057 --> 248
+done
+
+> (search-for-primes 1000000000000)
+
+1000000000039 --> 863
+1000000000061 --> 858
+1000000000063 --> 879
+done
+
+> (search-for-primes 10000000000000)
+
+10000000000037 --> 2788
+10000000000051 --> 2759
+10000000000099 --> 2621
+done
+
+From the output we can see that the time consumption is reduced to about half of that in the previous problem.
+
+
+
+1.24
+(timed-prime-test 100003)
+(timed-prime-test 100019)
+(timed-prime-test 100043)
+
+function          100003    100019   100043    100021.67
+------------------------------------------------------------
+start-prime-test    3         7        7         5.67
+fermat-test         3         4        7         4.67    
+test-iter           3         7        7         5.67
+expmod              3         4        3         3.33     
+work                0         0        0         0
+square              0         4        0         1.33 
+report-time         4         0        3         2.33
+timed-prime-test    0         0        0         0
+get-random          0         0        0         0
+prime?              0         0        0         0
+
+(timed-prime-test 1000000007)
+(timed-prime-test 1000000009)
+(timed-prime-test 1000000021)
+
+function         1000000007 1000000009 1000000021 1000000012.33
+----------------------------------------------------------------
+start-prime-test    10        10       10         10
+fermat-test         10        10       10         10    
+test-iter           10        10       10         10
+expmod              10        10       10         10
+work                 0         0        0         0
+square               3         3        0         2 
+report-time          3         4        0         2.33
+timed-prime-test     0         0        0         0
+get-random           0         0        0         0
+prime?               0         0        0         0
+
+The expected ratio should be log(1000000012.33)/log(100021.67), which is nearly 1.799966125. The data we collected can verify that prediction because of the log(n) growth of Fermat test.
+
+
+
+1.25
+Theoretically speaking, Alyssa's code can give us the correct result and it also has O(logn) growth. But the computation takes so much time and computer resource that it's really expensive and couldn't be used in practice. The reason is that when n is large enough, a^n will be an extremely large integer. Evaluating (remainder (fast-exp b e) n) costs a lot. But the original version of expmod won't have such a problem since it invokes remainder many times, keeping the result stay in the range [0, n-1], which is relatively tolerable to the computing process.
+
+
+
+1.26
+Louis's code implements the expmod as a tree recursive process. To analyse the time complexity, we try to calculate the nodes on the tree, each of that indicates an expmod procedure call.
+
+Think about the binary representation of the exponential e. If e is odd, its LSB is 1. From the definition of expmod, e will become e-1, so its LSB will become 0 and then be eliminated since it's now an even number and two expmod procedure calls will emerge.
+
+Let #leaf denote the number of leaves on the tree, and let #add denote the number of nodes that will be added. We have the following pseudo code:
+
+while e != 0 do:
+    if LSB = 0 then:
+        #add <-- 2*#leaf
+        #leaf <-- 2*#leaf
+        e <-- e/2
+    else:
+        #add <-- #leaf
+        LSB <-- 0
+
+Then we can analyse the upper and lower bounds of the number of expmod procedure calls. Let k be the number of bits of e's binary representation. Numbers of all 1s will lead to the upper bound, where the total procedure calls will be:
+  O(2^0 + 2^1 + ... + 2^(k-1) + 2^1 + 2^2 + ... + 2^(k-1))
+= O(2^(k+1)-3)
+= O(2^(logn+1+1)-3)
+= O(4n-3)
+= O(n)
+Number of the form '1000000' will lead to the lower bound, where the number of calls will be:
+  Omega(2^1 + 2^2 + ... + 2^(k-1) + 2^(k-1))
+= Omega(3*2^(k-1) - 1)
+= Omega(3*2^(logn+1-1)-1)
+= Omega(3n-1)
+= Omega(n)
+So the time complexity is Theta(n).
+
+
+
+1.27
+The code:
+(define (check-carmichael n)
+  (define (expmod b e)
+    (define (square x)
+      (* x x))
+    (cond ((= e 0) 1)
+          ((even? e) (remainder (square (expmod b (/ e 2))) n))
+          (else (remainder (* b (expmod b (- e 1))) n))))
+
+  (define (fermat-test num)
+    (= num (expmod num n)))
+  
+  (define (test num)
+    (cond ((= num (- n 1)) (display n) 
+                           (display " maybe Carmichael")
+                           (newline))
+          ((fermat-test num) (test (+ num 1)))
+          (else (display num)
+                (display " fuck!")
+                (newline))))
+  
+  (test 2))
+
+Check some given Carmichael numbers:
+
+> (check-carmichael 561)
+561 maybe Carmichael
+> (check-carmichael 1105)
+1105 maybe Carmichael
+> (check-carmichael 1729)
+1729 maybe Carmichael
+> (check-carmichael 2465)
+2465 maybe Carmichael
+> (check-carmichael 2821)
+2821 maybe Carmichael
+> (check-carmichael 6601)
+6601 maybe Carmichael
+
+
+
+1.28
+(define (Miller-Rabin n)
+  (define (test-iter count)
+    (cond ((= count 0) #t)
+          ((check) (test-iter (- count 1)))
+          (else #f)))
+  
+  (define (check)
+    (define a (+ 1 (random (- n 1))))
+    (define (judge x)
+      (if (= x 0) #f (= x 1)))
+    (judge (expmod a (- n 1))))
+  
+  (define (expmod b e)
+    (cond ((= e 0) 1)
+          ((even? e) (remainder 
+                      (square (witness (expmod b (/ e 2))))
+                      n))
+          (else (remainder (* b (expmod b (- e 1))) n))))
+  
+  (define (square x)
+    (* x x))
+  
+  (define (witness x)
+    (if (and (not (= x 1))
+             (not (= x (- n 1)))
+             (= (remainder (square x) n) 1))
+        0
+        x))
+  
+  (test-iter 100))
+
+Check the Carmichael numbers given previously with Fermat and Miller-Rabin:
+Fermat-test:
+> (Fermat 561)
+#t
+> (Fermat 1105)
+#t
+> (Fermat 1729)
+#t
+> (Fermat 2465)
+#t
+> (Fermat 2821)
+#t
+> (Fermat 6601)
+#t
+
+Miller-Rabin test:
+> (Miller-Rabin 561)
+#f
+> (Miller-Rabin 1105)
+#f
+> (Miller-Rabin 1729)
+#f
+> (Miller-Rabin 2465)
+#f
+> (Miller-Rabin 2821)
+#f
+> (Miller-Rabin 6601)
+#f
+
+
+
+1.29
+Result of using procedure integral (given in the book):
+> (integral cube 0 1 0.01)
+0.24998750000000042
+> (integral cube 0 1 0.001)
+0.249999875000001
+
+Code to calculate definite integral with Simpton's Rule:
+(define (simpson f a b n)
+  (define h (/ (- b a) n))
+  
+  (define (sum term a b next)
+    (if (> a b)
+        0
+        (+ (term a)
+           (sum term (next a) b next))))
+  
+  (define (get-term k)
+    (define y (f (+ a (* k h))))
+    (define coe (cond ((or (= k 0)
+                           (= k n)) 1)
+                      ((even? k) 2)
+                      (else 4)))
+    (* coe y))
+  
+  (define (inc k)
+    (+ 1 k))
+  
+  (* (/ h 3) (sum get-term 0 n inc)))
+
+Result of using Simpson's Rule:
+> (simpson cube 0 1 100)
+1/4
+> (simpson cube 0 1 1000)
+1/4
+
+
+
+1.30
+Iterative sum procudure:
+(define (sum term a b next)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (+ result (term a)))))
+  (iter a 0))
+
+
+
+1.31
+The product procedure:
+(define (product term a b next)
+  (if (> a b)
+      1
+      (* (term a)
+         (product term (next a) b next))))
+
+The factorial procedure defined with product:
+(define (factorial n)
+  (define (product term a b next)
+    (if (> a b)
+        1
+        (* (term a)
+           (product term (next a) b next))))
+  
+  (define (inc x) (+ x 1))
+  
+  (define (get-term x) x)
+  
+  (product get-term 2 n inc))
+
+Code for approximating Pi/4:
+(define (compute upper)
+  (define (product term a b next)
+    (if (> a b)
+        1
+        (* (term a)
+           (product term (next a) b next))))
+   
+  (define (get-term k)
+    (if (odd? k)
+        (/ (+ k 1) (+ k 2))
+        (/ (+ k 2) (+ k 1))))
+
+  (define (inc x)
+    (+ x 1))
+  
+  (product get-term 1 upper inc))
+
+Iteratively defined product procedure:
+(define (product term a b next)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (* result (term a)))))
+  (iter a 1))
+
+
+
+1.32
+Implementing the accumulate procedure:
+(define (accumulate combiner null-value term a b next)
+  (if (> a b)
+      null-value
+      (combiner (term a)
+                (accumulate combiner null-value term (next a) b next))))
+
+In order to define sum with accumulate, we pass
+(define (add x y)
+  (+ x y))
+to parameter combiner and 0 to null-value.
+
+In order to define product with accumulate, we pass
+(define (mult x y)
+  (* x y))
+to parameter combiner and 1 to null-value.
+
+Iteratively define the accumulate procedure:
+(define (accumulate combiner null-value term a b next)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (combiner result
+                                 (term a)))))
+  (iter a null-value))
+
+
+
+1.33
+Accumulating with filter:
+(define (filtered-accumulate combiner filter null-value term a b next)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a)
+              (combiner (filter (term a))
+                        result))))
+  (iter a null-value))
+
+To get the sum of primes in a given range, we define:
+(define (add x y)
+  (+ x y))
+
+(define (inc x)
+  (+ x 1))
+
+(define (f x) x)
+
+(define (predicate x)
+  (if (prime? x)
+      x
+      0))
+
+and we could obtain:
+
+> (filtered-accumulate add predicate 0 f 1 20 inc)
+77
+
+The code for computing product of integers that are relatively prime to n.
+(define (compute n)
+  (define (filtered-accumulate combiner filter null-value term a b next)
+    (define (iter a result)
+      (if (> a b)
+          result
+          (iter (next a)
+                (combiner (filter (term a))
+                          result))))
+    (iter a null-value))
+  
+  (define null-value 1)
+  
+  (define (filter x)
+    (if (= (gcd x n) 1)
+        x
+        null-value))
+  
+  (define (mult x y)
+    (* x y))
+  
+  (define (f x) x)
+  
+  (define (inc x)
+    (+ x 1))
+  
+  (filtered-accumulate mult filter null-value f 1 (- n 1) inc))
+
+
+
+1.34
+Evaluating (f f) will produce the sequence:
+(f f) --> (f 2) --> (2 2)
+Obviously the interpreter will give a warning saying that we expect a procedure but given a number 2.
+
+
+
+1.35
+Approximate golden ratio:
+> (fixed-point (lambda (x) (+ 1 (/ 1 x))) 1.0)
+1.6180371352785146
+
+
+
+1.36
+Modified fixed-point procedure that can count the number of steps and display each guess:
+(define (fixed-point f first-guess)
+  (define (close-enough? v1 v2)
+    (< (abs (- v1 v2)) tolerance))
+  
+  (define (try guess step-count)
+    (let ((next (f guess)))
+      (display "guess #")
+      (display step-count)
+      (display "    ")
+      (display guess)
+      (newline)
+      (if (close-enough? guess next)
+          guess
+          (try next (+ step-count 1)))))
+  
+  (try first-guess 1))
+
+Use that to find the approximate solution:
+> (fixed-point (lambda (x) (/ (log 1000) (log x))) 1.1)
+guess #1    1.1
+guess #2    72.47657378429035
+guess #3    1.6127318474109593
+guess #4    14.45350138636525
+guess #5    2.5862669415385087
+guess #6    7.269672273367045
+guess #7    3.4822383620848467
+guess #8    5.536500810236703
+guess #9    4.036406406288111
+guess #10    4.95053682041456
+guess #11    4.318707390180805
+guess #12    4.721778787145103
+guess #13    4.450341068884912
+guess #14    4.626821434106115
+guess #15    4.509360945293209
+guess #16    4.586349500915509
+guess #17    4.535372639594589
+guess #18    4.568901484845316
+guess #19    4.546751100777536
+guess #20    4.561341971741742
+guess #21    4.551712230641226
+guess #22    4.558059671677587
+guess #23    4.55387226495538
+guess #24    4.556633177654167
+guess #25    4.554812144696459
+guess #26    4.556012967736543
+guess #27    4.555220997683307
+guess #28    4.555743265552239
+guess #29    4.555398830243649
+guess #30    4.555625974816275
+guess #31    4.555476175432173
+guess #32    4.555574964557791
+guess #33    4.555509814636753
+guess #34    4.555552779647764
+guess #35    4.555524444961165
+guess #36    4.555543131130589
+guess #37    4.555530807938518
+4.555530807938518
+
+If we use average damping:
+
+(define (try guess step-count)
+    (let ((next (average guess (f guess))))
+      (display "guess #")
+      (display step-count)
+      (display "    ")
+      (display guess)
+      (newline)
+      (if (close-enough? guess next)
+          guess
+          (try next (+ step-count 1)))))
+
+> (fixed-point (lambda (x) (/ (log 1000) (log x))) 1.1)
+guess #1    1.1
+guess #2    36.78828689214517
+guess #3    19.352175531882512
+guess #4    10.84183367957568
+guess #5    6.870048352141772
+guess #6    5.227224961967156
+guess #7    4.701960195159289
+guess #8    4.582196773201124
+guess #9    4.560134229703681
+guess #10    4.5563204194309606
+guess #11    4.555669361784037
+guess #12    4.555558462975639
+guess #13    4.55553957996306
+4.55553957996306
+
+
+
+1.37
+a). The code:
+
+(define (cont-frac n d k)
+  (define (iter i result)
+    (if (= i 0)
+        result
+        (iter (- i 1)
+              (/ (n i) (+ (d i) result)))))
+  (iter k 0))
+
+The reciprocal of golden ratio is about 0.618033989, we try k=10 and k=11:
+
+> (cont-frac (lambda (i) 1.0)
+             (lambda (i) 1.0)
+             11)
+0.6180555555555556
+> (cont-frac (lambda (i) 1.0)
+             (lambda (i) 1.0)
+             10)
+0.6179775280898876
+> 
+
+So k=11 will be okay.
+
+b). The recursively evolving process:
+
+(define (cont-frac n d k)
+  (define (work i)
+    (if (> i k)
+        0
+        (/ (n i) (+ (d i)
+                    (work (+ i 1))))))
+  (work 1))
+
+
+
+1.38
+(define (cont-frac n d k)
+  (define (iter i result)
+    (if (= i 0)
+        result
+        (iter (- i 1)
+              (/ (n i) (+ result (d i))))))
+  (iter k 0))
+
+(define (get-d k)
+  (let ((r (+ 1 k)))
+    (if (= (remainder r 3) 0)
+        (* 2 (/ r 3))
+        1)))
+
+Running the code:
+> (+ 2 (cont-frac (lambda (i) 1.0)
+                  get-d
+                  100))
+2.7182818284590455
+
+
+
+1.39
+(define (tan-cf x k)
+  (define (cont-frac n d)
+    (define (iter i result)
+      (if (= i 0)
+          result
+          (iter (- i 1)
+                (/ (n i) (- (d i) result)))))
+    (iter k 0))
+  
+  (define (square x)
+    (* x x))
+  
+  (cont-frac (lambda (i)
+               (if (= i 1)
+                   x
+                   (square x)))
+             (lambda (i)
+               (- (* 2 i) 1))))
+
+And we calculate tan(Pi/3), whose exact value is sqrt(3):
+> (tan-cf 1.0471975511965977461542144610932 100)
+1.7320508075688779
+
+
+
+1.40
+The procedure cubic:
+(define (cubic a b c)
+  (lambda (x)
+    (+ (* x x x)
+       (* a x x)
+       (* b x)
+       c)))
+
+And we use it to find roots of x^3+x^2+x+1=0, whose only real root is -1:
+> (newton-method (cubic 1 1 1) 1.0)
+-1.000000022096024
+
+
+
+1.41
+Note that calling procedure double once equals calling its argument twice:
+(double f) <==> f(f(x)) = f^2(x)
+Then we have:
+(double double) <==> double^2(f)
+(double (double double)) <==> double^4(f)
+So, calling ((double (double double) inc) equals calling procedure inc 2^4=16 times, then inc^16(5)=5+16=21.
+
+
+
+1.42
+(define (compose f g)
+  (lambda (x) (f (g x))))
+
+
+
+1.43
+Define procedure repeated without using compose:
+(define (repeated f times)
+  (define (iter count result)
+    (if (= count 0)
+        result
+        (iter (- count 1)
+              (f result))))
+  (lambda (x)
+    (iter times x)))
+
+If we use compose:
+(define (repeated f times)
+  (define (compose f g)
+    (lambda (x) (f (g x))))
+  (define (iter count result-f)
+    (if (= count 0)
+        result-f
+        (iter (- count 1)
+              (compose f result-f))))
+  (iter (- times 1) f))
+
+Running the code:
+> ((repeated square 2) 5)
+625
+> ((repeated (lambda (x) (+ x 1)) 100) 0)
+100
+
+
+
+1.44
+Procedure smooth:
+
+(define (smooth f)
+  (define dx 0.00001)
+  (define (average a b c)
+    (/ (+ a b c) 3))
+  (lambda (x)
+    (average (f (- x dx))
+             (f x)
+             (f (+ x dx)))))
+
+Define it with repeated:
+
+(define (repeated f times)
+  (define (compose f g)
+    (lambda (x) (f (g x))))
+  (define (iter count result-f)
+    (if (= count 0)
+        result-f
+        (iter (- count 1)
+              (compose f result-f))))
+  (iter (- times 1) f))
+  
+(define (smooth f)
+  (define dx 0.00001)
+  (define (average a b c)
+    (/ (+ a b c) 3))
+  (lambda (x)
+    (average (f (- x dx))
+             (f x)
+             (f (+ x dx)))))
+
+(define (n-fold-smooth f times)
+  ((repeated smooth times) f))
+
+
+
+1.45
+By doing experiment we find that we need 1 average damping for computing square roots, 2 average damping for computing the fourth root, 3 average damping for computing the eighth root, and so on. We may guess that the number of average damping procedure calls will be floor(log2(n)). So we have the code to verify our prediction:
+
+(define (fixed-point f guess)
+  (define tolerance 0.00001)
+  (define (close-enough? v1 v2)
+    (< (abs (- v1 v2)) tolerance))
+  (define (try guess)
+    (let ((next (f guess)))
+      (if (close-enough? next guess)
+          next
+          (try next))))
+  (try guess))
+
+;; A.D.
+(define (average-damp f)
+  (define (average x y)
+    (/ (+ x y) 2))
+  (lambda (x)
+    (average x (f x))))
+
+;; Repeat function f `times' times
+(define (repeated f times)
+  (define (compose f g)
+    (lambda (x) (f (g x))))
+  (define (iter count result-f)
+    (if (= count 0)
+        result-f
+        (iter (- count 1)
+              (compose f result-f))))
+  (iter (- times 1) f))
+
+;; Log(n) time exponential
+(define (power-n x n)
+  (define (square num)
+    (* num num))
+  (define (iter b e result)
+    (cond ((= e 0) result)
+          ((even? e) (iter (square b)
+                           (/ e 2)
+                           result))
+          (else (iter b
+                      (- e 1)
+                      (* result b)))))
+  (iter x n 1))
+
+;; Count the number of A.D. needed
+(define (log2-floor n)
+  (define (iter num result)
+    (if (>= num 2)
+        (iter (/ num 2) (+ result 1))
+        result))
+  (iter n 0))
+
+;; We invoke this
+(define (root-n x n)
+  (let ((times (log2-floor n)))
+    (fixed-point ((repeated average-damp times)
+                  (lambda (y) (/ x (power-n y (- n 1)))))
+                 1.0)))
+
+Run it:
+
+> (root-n (power-n 2 10) 10)
+2.0000011830103324
+> (root-n (power-n 2 15) 15)
+2.0000040951543028
+> (root-n (power-n 3 100) 100)
+2.9999965294997883
+
+
+
+1.46
+Implementing square-root procedure:
+
+(define (square-root x)
+  (define (iterative-improve test improve)
+    (define (iter g)
+      (let ((next (improve g)))
+        (if (test next g)
+            next
+            (iter next))))
+    (lambda (first-guess) (iter first-guess)))
+  
+  (define (good-enough? v1 v2)
+    (let ((tolerance 0.00001))
+      (< (abs (- v1 v2)) tolerance)))
+  
+  (define (average-damp f)
+    (define (avg a b)
+      (/ (+ a b) 2))
+    (lambda (x) (avg x (f x))))
+  
+  ((iterative-improve good-enough?
+                      (average-damp (lambda (y) (/ x y)))) 1.0))
+
+Run it:
+> (square-root 2)
+1.4142135623746899
+> (square-root 3)
+1.7320508075688772
+> (square-root 1000)
+31.622776601684336
+> (square-root 10000)
+100.0
+> (square-root 1024)
+32.0000000000008
+
+
+Implementing fixed-point procedure:
+
+(define (fixed-point f guess)
+  (define (iterative-improve test improve)
+    (define (iter g)
+      (let ((next (improve g)))
+        (if (test next g)
+            next
+            (iter next))))
+    (lambda (first-guess) (iter first-guess)))
+  
+  (define (good-enough? v1 v2)
+    (let ((tolerance 0.00001))
+      (< (abs (- v1 v2)) tolerance)))
+  
+  ((iterative-improve good-enough?
+                      f) guess))
+
+(define (average-damp f)   
+  (define (avg a b)
+    (/ (+ a b) 2))
+  (lambda (x) (avg x (f x))))
+
+Run it:
+
+> (fixed-point cos 1.0)
+0.7390822985224024
+> (fixed-point (lambda (y) (+ (sin y) (cos y))) 1.0)
+1.2587315962971173
+> (fixed-point (average-damp (lambda (y) (/ 2 y))) 1.0)
+1.4142135623746899

@@ -1,0 +1,1794 @@
+2.1
+(define (make-rat n d)
+  (let ((g (gcd (abs n) (abs d)))
+        (na (abs n))
+        (nd (abs d)))
+    (cond ((= nd 0) (cons 1 1))
+          ((< (* n d) 0) (cons (- (/ na g)) (/ nd g)))
+          (else (cons (/ na g) (/ nd g))))))
+
+(define (numer r)
+  (car r))
+
+(define (denom r)
+  (cdr r))
+
+(define (print-rat r)
+  (display (numer r))
+  (display "/")
+  (display (denom r))
+  (newline))
+
+
+
+2.2
+(define (make-point x y)
+  (cons x y))
+(define (x-point p)
+  (car p))
+(define (y-point p)
+  (cdr p))
+
+(define (make-segment p1 p2)
+  (cons p1 p2))
+(define (start-segment s)
+  (car s))
+(define (end-segment s )
+  (cdr s))
+
+(define (midpoint-segment s)
+  (define (average a b)
+    (/ (+ a b) 2))
+  (make-point (average (x-point (start-segment s))
+                       (x-point (end-segment s)))
+              (average (y-point (start-segment s))
+                       (y-point (end-segment s)))))
+
+(define (print-point p)
+  (display "(")
+  (display (x-point p))
+  (display ", ")
+  (display (y-point p))
+  (display ")")
+  (newline))
+
+Run it:
+> (print-point 
+   (midpoint-segment 
+    (make-segment (make-point -1 -1)
+                  (make-point 1 1))))
+(0, 0)
+> (print-point 
+   (midpoint-segment 
+    (make-segment (make-point 1.53 7.23)
+                  (make-point -53 -1234))))
+(-25.735, -613.385)
+
+
+
+2.3
+First representation: we use the representation of points and segments:
+
+;; Return the vector
+(define (get-vector s)
+  (make-point (- (x-point (start-segment s))
+                 (x-point (end-segment s)))
+              (- (y-point (start-segment s))
+                 (y-point (end-segment s)))))
+
+;; Get the length
+(define (len s)
+  (define (sqr x)
+    (* x x))
+  (let ((v (get-vector s)))
+    (sqrt (+ (sqr (x-point v))
+             (sqr (y-point v))))))
+
+(define (make-rect s1 s2)
+  (cons s1 s2))
+(define (a-side rect)
+  (car rect))
+(define (b-side rect)
+  (cdr rect))
+
+;; Get perimeter and area
+(define (perimeter rect)
+  (* 2 (+ (len (a-side rect))
+          (len (b-side rect)))))
+(define (area rect)
+  (* (len (a-side rect))
+     (len (b-side rect))))
+
+In order to keep procedures perimeter and area unchanged, we describe a rectangle with the two end points on one of its diagonals, and modify procedures a-side and b-side accordingly:
+
+(define (make-rect p1 p2)
+  (cons p1 p2))
+(define (pt-a rect)
+  (car rect))
+(define (pt-b rect)
+  (cdr rect))
+(define (a-side rect)
+  (make-segment (pt-a rect)
+                (make-point (x-point (pt-a rect))
+                            (y-point (pt-b rect)))))
+(define (b-side rect)
+  (make-segment (pt-a rect)
+                (make-point (x-point (pt-b rect))
+                            (y-point (pt-a rect)))))
+
+Run it:
+> (len (a-side (make-rect (make-point -1 0)
+                          (make-point 1 -1))))
+1
+> (len (b-side (make-rect (make-point -1 0)
+                          (make-point 1 -1))))
+2
+> (perimeter (make-rect (make-point -1 0)
+                        (make-point 1 -1)))
+6
+> (area (make-rect (make-point -1 0)
+                   (make-point 1 -1)))
+2
+
+
+
+2.4
+Evaluating (car (cons 1 2)), we obtain:
+(car (cons 1 2))
+(car (lambda (m) (m 1 2)))
+((lambda (m) (m 1 2)) (lambda (p q) p))
+((lambda (p q) p) 1 2)
+1
+
+So the definition of cdr could be:
+
+(define (cdr z)
+  (z (lambda (p q) q)))
+
+
+
+2.5
+(define (my-cons a b)
+  (define (pow b e)
+    (define (square x)
+      (* x x))
+    (define (iter base exp result)
+      (cond ((= exp 0) result)
+            ((even? exp) (iter (square base)
+                               (/ exp 2)
+                               result))
+            (else (iter base
+                        (- exp 1)
+                        (* result base)))))
+    (iter b e 1))
+  (* (pow 2 a) (pow 3 b)))
+
+(define (div-count n k)
+  (define (iter m result)
+    (if (not (= (remainder m k) 0))
+        result
+        (iter (/ m k) (+ result 1))))
+  (iter n 0))
+
+(define (my-car n)
+  (div-count n 2))
+
+(define (my-cdr n)
+  (div-count n 3))
+
+Run it:
+> (my-car (my-cons 12 4))
+12
+> (my-cdr (my-cons 12 4))
+4
+
+
+
+2.6
+We calculate (add-1 zero) to get the definition of one:
+(add-1 zero)
+(add-1 (lambda (f) (lambda (x) x)))
+Then it returns a procedure:
+(lambda (f) (lambda (x)
+				(f (((lambda (f) (lamda (x) x)) f) x))))
+(lambda (f) (lambda (x)
+				(f ((lambda (x) x) x))))
+(lambda (f) (lambda (x)
+				(f x)))
+
+From this we know that zero applies no operation on its argument, one applies procedure f on its argument once. So we can define one and two:
+
+(define one
+  (lambda (f) (lambda (x) (f x))))
+(define two
+  (lambda (f) (lambda (x) (f (f x)))))
+
+Then we can infer that, when we add a and b, a will apply f on x a times while b will do the same thing for b times:
+
+(define (add a b)
+  (lambda (f) (lambda (x) ((a f) ((b f) x)))))
+
+
+
+2.7
+(define (make-interval a b)
+  (cons a b))
+(define (upper-bound int)
+  (car int))
+(define (lower-bound int)
+  (cdr int))
+
+
+
+2.8
+(define (sub-int x y)
+  (make-int (- (lower x) (upper y))
+            (- (upper x) (lower y))))
+
+
+
+2.9
+Suppose we have two intervals (L1, R1) and (L2, R2). Adding them we obtain (L1+L2, R1+R2), its width equals:
+((R1+R2) - (L1+L2))/2
+which is:
+((R1-L1) + (R2-L2))/2 = (R1-L1)/2 + (R2-L2)/2, the same as the sum of their widths.
+Subtracting them we obtain (L1-R2, R1-L2), its width is:
+((R1-L2) - (L1-R2))/2
+which is:
+((R1-L1) + (R2-L2))/2, also equals the sum of their widths.
+
+Consider (-1, 3) and (1, 2), multiply them we obtain (-2, 6), whose width is 4, and performing division we obtain (-1, 3), whose width is 2. In those two cases, we cannot get a function that takes the two operand intervals' widths as parameters and gives out a width of the result interval.
+
+
+
+2.10
+(define (div-int x y)
+  (if (not (or (> (lower y) 0)
+               (< (upper y) 0)))
+      (display "error")
+      (mul-int x (make-int (/ 1.0 (upper y))
+                           (/ 1.0 (lower y))))))
+
+
+
+2.11
+(define (mul-int x y)
+  (let ((L1 (lower x))
+        (R1 (upper x))
+        (L2 (lower y))
+        (R2 (upper y)))
+    (cond ;; Case 1
+          ((and (>= L1 0) (>= R1 0) (>= L2 0) (>= R2 0)) 
+           (make-int (* L1 L2) (* R1 R2)))
+          ;; Case 2
+          ((and (<= L1 0) (<= R1 0) (<= L2 0) (<= R2 0))
+           (make-int (* R1 R2) (* L1 L2)))
+          ;; Case 3
+          ((and (<= L1 0) (<= R1 0) (<= L2 0) (>= R2 0))
+           (make-int (* L1 R2) (* L1 L2)))
+          ;; Case 4
+          ((and (<= L1 0) (>= R1 0) (<= L2 0) (<= R2 0))
+           (make-int (* L2 R1) (* L1 L2)))
+          ;; Case 5
+          ((and (>= L1 0) (>= R1 0) (<= L2 0) (<= R2 0))
+           (make-int (* L2 R1) (* L1 R2)))
+          ;; Case 6
+          ((and (<= L1 0) (<= R1 0) (>= L2 0) (>= R2 0))
+           (make-int (* L1 R2) (* L2 R1)))
+          ;; Case 7
+          ((and (>= L1 0) (>= R1 0) (<= L2 0) (>= R2 0))
+           (make-int (* L2 R1) (* R1 R2)))
+          ;; Case 8
+          ((and (<= L1 0) (>= R1 0) (>= L2 0) (>= R2 0))
+           (make-int (* L1 R2) (* R1 R2)))
+          ;; Case 9
+          ((and (<= L1 0) (>= R1 0) (<= L2 0) (>= R2 0))
+           (make-int (min (* L1 R2) (* L2 R1)) (* R1 R2))))))
+
+
+
+2.12
+(define (make-center-percent c p)
+  (let ((offset (* c p)))
+    (make-int (- c offset)
+              (+ c offset))))
+
+(define (center int)
+  (/ (+ (lower int) (upper int)) 2))
+
+(define (percent int)
+  (/ (width int) (center int))
+
+
+
+2.13
+Suppose we have two intervals (c1, t1) and (c2, t2), where c and t are the center and tolerance. Then the former is:
+[ c1(1-t1), c1(1+t1) ]
+and the latter is:
+[ c2(1-t2), c2(1+t2) ]
+So their product is:
+[ c1c2(1-t1)(1-t2), c1c2(1+t1)(1+t2) ].
+Its tolerance is:
+(c1c2((1+t1)(1+t2) - (1-t1)(1-t2))) / (c1c2(1+t1)(1+t2) + (1-t1)(1-t2))
+which is equal to
+(t1+t2) / (1+t1t2)
+Under the assumption of small percentage tolerance, we can ignore t1t2, so the tolerance of the product can be approximated by the sum of the tolerance of the factors.
+
+
+
+2.14
+To verify that Lem's claim is correct:
+
+> (define r1 (make-center-percent 2 5))
+> (define r2 (make-center-percent 1 7))
+> (par1 r1 r2)
+(0.5574132492113564 . 0.793992932862191)
+> (par2 r1 r2)
+(0.6243816254416961 . 0.7088328075709779)
+
+What we want to express with the center-percentage form is that, the exact value lies in the range [c-w, c+w]. We expect that the result of A/A is an interval with center=1 and tolerance=0 since the two operands are identical. But Alyssa's program cannot be aware of the identity of values. It just treat A/A as two different intervals.
+
+> (define r1 (make-center-percent 3 20))
+> (define r2 (make-center-percent 4 20))
+> (center (div-int r1 r1))
+1.0833333333333333
+> (percent (div-int r1 r1))
+0.38461538461538464
+> (center (div-int r1 r2))
+0.8125
+> (percent (div-int r1 r2))
+0.38461538461538464
+
+If the tolerance is much smaller than the center value, the interval will look like a point. So the two means will both produce better results:
+
+> (define r1 (make-center-percent 1000 1))
+> (define r2 (make-center-percent 2000 1))
+> (center (par1 r1 r2))
+666.933360002667
+> (percent (par1 r1 r2))
+0.02999200239928028
+> (center (par2 r1 r2))
+666.6666666666667
+> (percent (par2 r1 r2))
+0.010000000000000028
+
+
+
+2.15
+Eva's words is reasonable because in par2, either R1 or R2 appears only once, where the flaw in Alyssa's program won't be triggered so that it produces better results (Both of the formulae are correct. Giving different answers are due to the defect of Alyssa's program):
+> (define r7 (make-center-percent 4 50))
+> (define r8 (make-center-percent 6 50))
+> (center (par1 r7 r8))
+5.6000000000000005
+> (percent (par1 r7 r8))
+0.9285714285714285
+> (center (par2 r7 r8))
+2.4
+> (percent (par2 r7 r8))
+0.4999999999999999
+
+
+
+2.16
+Because of the flaw in Alyssa's program that it knows nothing about two actually equivalent variables, equivalent algebraic expressions lead to different results. This kind of problems can be expressed as, given a multi-variable function with the domain of each variable, compute the range of value we can get with that function. Well I cannot solve this problem. Here are some libraries to perform interval arithmetic.
+
+
+
+2.17
+(define (last-pair L)
+  (if (null? (cdr L))
+      L
+      (last-pair (cdr L))))
+         
+(define ten (list 1 2 3 4 5 6 7 8 9 10))
+
+
+
+2.18
+(define (reverse-list L)
+  (define (iter L result)
+    (if (null? L)
+        result
+        (iter (cdr L)
+              (cons (car L)
+                    result))))
+  (iter L (list)))
+
+
+
+2.19
+(define (cc amount coin-values)
+  ;; Value of the first type
+  (define (first-denomination coin-list)
+    (car coin-list))
+  
+  ;; A list with all but the first type
+  (define (except-first-denomination coin-list)
+    (cdr coin-list))
+  
+  ;; Is it empty?
+  (define (no-more? coin-list)
+    (null? coin-list))
+  
+  (cond ((= amount 0) 1)
+        ((or (< amount 0)
+             (no-more? coin-values)) 0)
+        (else (+ (cc amount (except-first-denomination coin-values))
+                 (cc (- amount
+                        (first-denomination coin-values))
+                     coin-values)))))
+
+(define us-coins (list 50 25 10 5 1))
+(define uk-coins (list 100 50 20 10 5 2 1 0.5))
+
+Run the code:
+> (cc 100 us-coins)
+292
+> (cc 10 uk-coins)
+50
+
+If we adjust the order of the values in the list, our procedure will produce the same answer. Since it will try to find out all possible combinations of the coins.
+
+
+
+2.20
+(define (same-parity first . other)
+  (define (link L1 L2)
+    (if (null? L1)
+        L2
+        (cons (car L1)
+              (link (cdr L1) L2))))
+  (define r (remainder first 2))
+  (define (filter x)
+    (if (= (remainder x 2) r)
+        (list x)
+        (list)))
+  (define (iter L result)
+    (if (null? L)
+        result
+        (iter (cdr L)
+              (link result
+                    (filter (car L))))))
+  
+  (iter other (list first)))
+
+Damn it, DrRacket has an primitive append:
+(define (same-parity first . other)
+  (define r (remainder first 2))
+  (define (iter L result)
+    (if (null? L)
+        result
+        (iter (cdr L)
+              (if (= r (remainder (car L) 2))
+                  (append result (list (car L)))
+                  result))))
+  (iter other (list first)))
+
+
+
+2.21
+Code 1:
+
+(define (square-list items)
+  (let ((sqr (lambda (x) (* x x))))
+    (if (null? items)
+        nil
+        (cons (sqr (car items)) 
+              (square-list (cdr items))))))
+
+Code 2:
+
+(define (my-map items op)
+  (let ((nil (list)))
+    (if (null? items)
+        nil
+        (cons (op (car items))
+              (my-map (cdr items) op)))))
+
+(define (square-list items)
+  (my-map items (lambda (x) (* x x))))
+
+
+
+2.22
+Louis gets a reversed list because in each iteration his procedure always adds a new term at the head of the answer list.
+
+After Louis modifies his code, in each iteration the procedure constructs a new pair, whose first element is the answer, which is a pair, and the second element is a number. Hence the result of (square-list (list 1 2 3)) will look like:
+(((().1).4).9)
+where the dot sign separates a pair's two parts.
+
+
+
+2.23
+(define nil (list))
+
+(define (my-for-each items op)
+  (cond ((null? items) #t)
+        (else (op (car items))
+              (my-for-each (cdr items) op))))
+
+
+
+2.24
+The interpreter's output is:
+> (list 1 (list 2 (list 3 4)))
+(1 (2 (3 4)))
+
+The corresponding box-and-pointer structure is:
+
+The tree interpretation is:
+
+    |
++---+---+
+|       |
+1   +---+---+
+    |       |
+    2   +---+---+
+        |       |
+        3       4
+
+
+
+2.25
+(define list1 (list 1 3 (list 5 7) 9))
+(define list2 (list (list 7)))
+(define list3 (list 1
+                    (list 2
+                          (list 3
+                                (list 4
+                                      (list 5
+                                            (list 6 7)))))))
+
+> (car (cdr (car (cdr (cdr list1)))))
+7
+> (car (car list2))
+7
+> (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr list3))))))))))))
+7
+
+
+
+2.26
+> (append x y)
+(1 2 3 4 5 6)
+> (cons x y)
+((1 2 3) 4 5 6)
+> (list x y)
+((1 2 3) (4 5 6))
+
+
+
+2.27
+(define (my-reverse items)
+  (define (iter items result)
+    (if (null? items)
+        result
+        (iter (cdr items)
+              (cons (my-reverse (car items))
+                    result))))
+  (if (not (pair? items))
+      items
+      (iter items (list))))
+
+> (my-reverse (list (list 1 2) (list 3 4)))
+((4 3) (2 1))
+> (my-reverse (list (list 1 2 3) 4 5 (list (list 1 2) (list 3 4))))
+(((4 3) (2 1)) 5 4 (3 2 1))
+
+
+
+2.28
+(define (fringe tree)
+  (cond ((null? tree) (list))
+        ((not (pair? tree)) (list tree))
+        (else (append (fringe (car tree))
+                      (fringe (cdr tree))))))
+
+(define x (list (list 1 2) (list 3 4)))
+
+> (fringe x)
+(1 2 3 4)
+> (fringe (list x x))
+(1 2 3 4 1 2 3 4)
+> (fringe (list (list (list 1 2) (list 3 4))
+                (list (list 5 6) (list 7 8))))
+(1 2 3 4 5 6 7 8)
+
+
+
+2.29
+a).
+(define (left-branch m)
+  (car m))
+(define (right-branch m)
+  (car (cdr m)))
+
+(define (branch-length b)
+  (car b))
+(define (branch-structure b)
+  (car (cdr b)))
+
+b).
+(define (total-weight m)
+  (cond ((null? m) 0)
+        ;; A submobile
+        ((pair? (car m)) (+ (total-weight (left-branch m))
+                            (total-weight (right-branch m))))
+        ;; A branch
+        (else (if (pair? (branch-structure m))
+                  (total-weight (branch-structure m))
+                  (branch-structure m)))))
+
+(define x (make-mobile (make-branch 1
+                                    (make-mobile (make-branch 1 2)
+                                                 (make-branch 1 3)))
+                       (make-branch 2
+                                    (make-mobile (make-branch 2
+                                                              (make-mobile (make-branch 2 1)
+                                                                           (make-branch 2 2)))
+                                                 (make-branch 2 3)))))
+
+(define y (make-mobile (make-branch 1 2)
+                       (make-branch 3 4)))
+
+Run the code:
+
+> (total-weight x)
+11
+> (total-weight y)
+6
+
+c).
+(define (balance? m)
+  (define (check-equal root)
+    (= (* (branch-length (left-branch m))
+          (total-weight (left-branch m)))
+       (* (branch-length (right-branch m))
+          (total-weight (right-branch m)))))
+
+  (cond ((null? m) #t)
+        ;; A submobile
+        ((pair? (car m)) (and (check-equal m)
+                              (balance? (left-branch m))
+                              (balance? (right-branch m))))
+        ;; A branch
+        (else (if (pair? (branch-structure m))
+                  (balance? (branch-structure m))
+                  #t))))
+
+Test the code:
+
+(define z (make-mobile (make-branch 2 8)
+                       (make-branch 4 4)))
+
+(define t (make-mobile (make-branch 2
+                                    (make-mobile (make-branch 1 2)
+                                                 (make-branch 1 3)))
+                       (make-branch 2 5)))
+
+> (balance? x)
+#f
+> (balance? y)
+#f
+> (balance? z)
+#t
+> (balance? t)
+#f
+
+d).
+If we use cons in the constructors, we need to modify the selectors:
+(define (left-branch m)
+  (car m))
+(define (right-branch m)
+  (cdr m))
+
+(define (branch-length b)
+  (car b))
+(define (branch-structure b)
+  (cdr b))
+
+
+
+2.30
+Direct definition:
+
+(define (square-tree tree)
+  (cond ((null? tree) (list))
+        ((not (pair? tree)) (* tree tree))
+        (else (cons (square-tree (car tree))
+                    (square-tree (cdr tree))))))
+
+Using higher order procedures:
+
+(define (my-map proc items)
+  (if (null? items)
+      (list)
+      (cons (proc (car items))
+            (my-map proc (cdr items)))))
+
+(define (square-tree tree)
+  (my-map (lambda (t)
+            (if (pair? t)
+                (square-tree t)
+                (* t t)))
+          tree))
+
+
+
+2.31
+(define (square x)
+  (* x x))
+
+(define (tree-map proc t)
+  (cond ((null? t) (list))
+        ((not (pair? t)) (proc t))
+        (else (cons (tree-map proc (car t))
+                    (tree-map proc (cdr t))))))
+  
+(define (square-tree tree)
+  (tree-map square tree))
+
+
+
+2.32
+(define (subset s)
+  (if (null? s)
+      (list (list))
+      (let ((rest (subset (cdr s))))
+        (append rest (map (lambda (x)
+                            (cons (car s) x))
+                            rest)))))
+
+In order to get all subsets of a set S, we take the first element x of S into account. We can divide the set of subsets of S into two parts: A). subsets that don't contain x and B). subsets that contain x. If we eliminate x from part B)., the remaining section will be the same as part A). 
+
+So in the definition of subset, we add element x into all subsets in rest.
+
+
+
+2.33
+(define (mapper p seq)
+  (accumulate (lambda (x y) 
+                (cons (p x) y))
+              (list) seq))
+
+(define (appender seq1 seq2)
+  (accumulate cons seq2 seq1))
+
+(define (leng seq)
+  (accumulate (lambda (x y) (+ 1 y)) 0 seq))
+
+
+
+2.34
+(define (horner-eval x coeff-seq)
+  (accumulate (lambda (this-coeff higher-terms)
+                (+ this-coeff
+                   (* x higher-terms)))
+              0
+              coeff-seq))
+
+
+
+2.35
+Damn, I confess that I forgot to use recursion. My solution is:
+(define (get-leaves tree)
+  (cond ((null? tree) (list))
+        ((not (pair? tree)) (list tree))
+        (else (append (get-leaves (car tree))
+                      (get-leaves (cdr tree))))))
+
+(define (leng seq)
+  (accumulate (lambda (x y) (+ 1 y)) 0 seq))
+
+(define (count-leaves tree)
+  (accumulate (lambda (x y)
+                (+ (leng x) y))
+              0
+              (map get-leaves tree)))
+
+This seems disgusting since I try to store the leaves on the same subtree in a list and accumulate their lengths.... But using recursion could be much easier to understand:
+(define (count-leaves tree)
+  (accumulate + 0 (map (lambda (subtree)
+                         (if (pair? subtree)
+                             (count-leaves subtree)
+                             1)) tree)))
+
+Fuck my brain......
+
+
+
+2.36
+Fuck! I forgot to map car and cdr.
+
+(define (accumulate op init seq)
+  (if (null? seq)
+      init
+      (op (car seq)
+          (accumulate op init (cdr seq)))))
+
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      (list)
+      (cons (accumulate op init (map car seqs))
+            (accumulate-n op init (map cdr seqs)))))
+
+
+
+2.37
+(define (dot-product v w)
+  (accumulate + 0 (map * v w)))
+
+(define (matrix-*-vector m v)
+  (map (lambda (r) (dot-product r v)) m))
+
+(define (transpose mat)
+  (accumulate-n cons (list) mat))
+
+(define (matrix-*-matrix m n)
+  (let ((cols (transpose n)))
+    (map (lambda (r) (matrix-*-vector cols r)) m)))
+
+
+
+2.38
+Fold-right and fold-left evaluate in different direction:
+> (fold-right / 1 (list 1 2 3))
+3/2
+Since it regards the right part as a whole thing and perform recursion.
+
+> (fold-left / 1 (list 1 2 3))
+1/6
+Since it picks one element from the left head at each step of iteration.
+
+> (fold-right list (list) (list 1 2 3))
+(1 (2 (3 ())))
+> (fold-left list (list) (list 1 2 3))
+(((() 1) 2) 3)
+This result could be more helpful to see the difference.
+
+Operations that are associative will make the two procedures produce the same result.
+
+
+
+2.39
+(define (reverse seq)
+  (fold-right (lambda (x y) (append y (list x))) (list) seq))
+
+(define (reverse seq)
+  (fold-left (lambda (x y) (cons y x)) (list) seq))
+
+
+
+2.40
+(define (unique-pairs n)
+  (flatmap (lambda (i)
+             (map (lambda (j) (list i j))
+                  (enumerate-int 1 (- i 1))))
+           (enumerate-int 1 n)))
+
+(define (prime-sum-pairs n)
+  (map make-pair-sum
+       (filter prime-sum? (unique-pairs n))))
+
+
+
+2.41
+(define (get-tuples n s)
+  (let ((check-sum (lambda (triple)
+                     (= (+ (car triple)
+                           (cadr triple)
+                           (caddr triple)) s))))
+    (filter check-sum
+            (flatmap (lambda (i)
+                       (flatmap (lambda (j)
+                                  (map (lambda (k) (list i j k))
+                                       (enumerate-int 1 (- j 1))))
+                                (enumerate-int 1 (- i 1))))
+                     (enumerate-int 1 n)))))
+
+Run the program:
+> (get-tuples 20 10)
+((5 3 2) (5 4 1) (6 3 1) (7 2 1))
+
+
+
+2.42
+We denote a chess board layout with:
+(r[n], ..., r[2], r[1]) 
+which means that for the queen on the i-th column, we place it on row r[i]
+
+(define (adjoin-position row k other-queens)
+  (cons row other-queens))
+
+(define empty-board (list))
+
+(define (safe? k layout)
+  (let ((target (car layout)))
+    (define (iter i seq)
+      (cond ((= i 0) #t)
+            ;; Check if two queens are on the same row
+            ((= (car seq) target) #f)
+            ;; Check if two queens are on the same diagonal
+            ((= (abs (- i k)) (abs (- (car seq) target))) #f)
+            (else (iter (- i 1) (cdr seq)))))
+    (iter (- k 1) (cdr layout))))
+    
+(define (queens board-size)
+  (define (queen-cols k)
+    (if (= k 0)
+        (list empty-board)
+        (filter (lambda (positions) (safe? k positions))
+                (flatmap (lambda (rest-of-queens)
+                           (map (lambda (new-row)
+                                  (adjoin-position new-row k rest-of-queens))
+                                (enumerate-int 1 board-size)))
+                         (queen-cols (- k 1))))))
+  (queen-cols board-size))
+
+We can get the 92 solutions for 8 queens by running:
+> (queens 8)
+((4 2 7 3 6 8 5 1)
+ (5 2 4 7 3 8 6 1)
+ (3 5 2 8 6 4 7 1)
+ (3 6 4 2 8 5 7 1)
+ (5 7 1 3 8 6 4 2)
+ (4 6 8 3 1 7 5 2)
+ (3 6 8 1 4 7 5 2)
+ (5 3 8 4 7 1 6 2)
+ (5 7 4 1 3 8 6 2)
+ (4 1 5 8 6 3 7 2)
+ (3 6 4 1 8 5 7 2)
+ (4 7 5 3 1 6 8 2)
+ (6 4 2 8 5 7 1 3)
+ (6 4 7 1 8 2 5 3)
+ (1 7 4 6 8 2 5 3)
+ (6 8 2 4 1 7 5 3)
+ (6 2 7 1 4 8 5 3)
+ (4 7 1 8 5 2 6 3)
+ (5 8 4 1 7 2 6 3)
+ (4 8 1 5 7 2 6 3)
+ (2 7 5 8 1 4 6 3)
+ (1 7 5 8 2 4 6 3)
+ (2 5 7 4 1 8 6 3)
+ (4 2 7 5 1 8 6 3)
+ (5 7 1 4 2 8 6 3)
+ (6 4 1 5 8 2 7 3)
+ (5 1 4 6 8 2 7 3)
+ (5 2 6 1 7 4 8 3)
+ (6 3 7 2 8 5 1 4)
+ (2 7 3 6 8 5 1 4)
+ (7 3 1 6 8 5 2 4)
+ (5 1 8 6 3 7 2 4)
+ (1 5 8 6 3 7 2 4)
+ (3 6 8 1 5 7 2 4)
+ (6 3 1 7 5 8 2 4)
+ (7 5 3 1 6 8 2 4)
+ (7 3 8 2 5 1 6 4)
+ (5 3 1 7 2 8 6 4)
+ (2 5 7 1 3 8 6 4)
+ (3 6 2 5 8 1 7 4)
+ (6 1 5 2 8 3 7 4)
+ (8 3 1 6 2 5 7 4)
+ (2 8 6 1 3 5 7 4)
+ (5 7 2 6 3 1 8 4)
+ (3 6 2 7 5 1 8 4)
+ (6 2 7 1 3 5 8 4)
+ (3 7 2 8 6 4 1 5)
+ (6 3 7 2 4 8 1 5)
+ (4 2 7 3 6 8 1 5)
+ (7 1 3 8 6 4 2 5)
+ (1 6 8 3 7 4 2 5)
+ (3 8 4 7 1 6 2 5)
+ (6 3 7 4 1 8 2 5)
+ (7 4 2 8 6 1 3 5)
+ (4 6 8 2 7 1 3 5)
+ (2 6 1 7 4 8 3 5)
+ (2 4 6 8 3 1 7 5)
+ (3 6 8 2 4 1 7 5)
+ (6 3 1 8 4 2 7 5)
+ (8 4 1 3 6 2 7 5)
+ (4 8 1 3 6 2 7 5)
+ (2 6 8 3 1 4 7 5)
+ (7 2 6 3 1 4 8 5)
+ (3 6 2 7 1 4 8 5)
+ (4 7 3 8 2 5 1 6)
+ (4 8 5 3 1 7 2 6)
+ (3 5 8 4 1 7 2 6)
+ (4 2 8 5 7 1 3 6)
+ (5 7 2 4 8 1 3 6)
+ (7 4 2 5 8 1 3 6)
+ (8 2 4 1 7 5 3 6)
+ (7 2 4 1 8 5 3 6)
+ (5 1 8 4 2 7 3 6)
+ (4 1 5 8 2 7 3 6)
+ (5 2 8 1 4 7 3 6)
+ (3 7 2 8 5 1 4 6)
+ (3 1 7 5 8 2 4 6)
+ (8 2 5 3 1 7 4 6)
+ (3 5 2 8 1 7 4 6)
+ (3 5 7 1 4 2 8 6)
+ (5 2 4 6 8 3 1 7)
+ (6 3 5 8 1 4 2 7)
+ (5 8 4 1 3 6 2 7)
+ (4 2 5 8 6 1 3 7)
+ (4 6 1 5 2 8 3 7)
+ (6 3 1 8 5 2 4 7)
+ (5 3 1 6 8 2 4 7)
+ (4 2 8 6 1 3 5 7)
+ (6 3 5 7 1 4 2 8)
+ (6 4 7 1 3 5 2 8)
+ (4 7 5 2 6 1 3 8)
+ (5 7 2 6 3 1 4 8))
+
+
+
+2.43
+Louis's program runs slowly because he makes the procedure compute (queen-cols (- k 1)) for each enumerated row number. That is to say, whenever we try a new row number to place the k-th queen, we compute all solutions for k-1 queens.
+
+The original version:
+T(n) = T(n-1) + f(n)
+The modified version:
+T(n) = n(T(n-1) + O(1))
+About 8!*T
+
+
+
+2.44
+(define (up-split painter n)
+  (if (= n 0)
+      painter
+      (let ((smaller (up-split painter (- n 1))))
+        (below painter (besides smaller smaller)))))
+
+
+
+2.45
+(define (split op-big op-small)
+  (lambda (painter n)
+    (if (= n 0)
+        painter
+        (let ((smaller ((split op-big op-small) painter (- n 1))))
+          (op-big painter (op-small smaller smaller))))))
+
+
+
+2.46
+(define (make-vect x y)
+  (cons x y))
+(define (xcor-vect v)
+  (car v))
+(define (ycor-vect v)
+  (cdr v))
+
+(define (add-vect u v)
+  (make-vect (+ (xcor-vect u) (xcor-vect v))
+             (+ (ycor-vect u) (ycor-vect u))))
+
+(define (sub-vect u v)
+  (make-vect (- (xcor-vect u) (xcor-vect v))
+             (- (ycor-vect u) (ycor-vect u))))
+
+(define (scale-vect s v)
+  (make-vect (* s (xcor-vect v))
+             (* s (ycor-vect v))))
+
+
+
+2.47
+(define (make-frame origin edge1 edge2)
+  (list origin edge1 edge2))
+(define (frame-origin f)
+  (car f))
+(define (frame-edge1 f)
+  (cadr f))
+(define (frame-edge2 f)
+  (caddr f))
+
+(define (make-frame origin edge1 edge2)
+  (cons origin (cons edge1 edge2)))
+(define (frame-origin f)
+  (car f))
+(define (frame-edge1 f)
+  (cadr f))
+(define (frame-edge2 f)
+  (cddr f))
+
+
+
+2.48
+(define (make-segment v-start v-end)
+  (cons v-start v-end))
+(define (start-segment s)
+  (car s))
+(define (end-segment s)
+  (cdr s))
+
+
+
+2.49
+(define (draw-frame-outline f)
+  (segments->painter (list (make-segment (make-vect 0.0 0.0) 
+                                         (make-vect 0.0 0.1))
+                           (make-segment (make-vect 0.0 0.1) 
+                                         (make-vect 1.0 1.0))
+                           (make-segment (make-vect 1.0 1.0) 
+                                         (make-vect 1.0 0.0))
+                           (make-segment (make-vect 1.0 0.0)
+                                         (make-vect 0.0 0.0)))))
+
+(define (draw-x f)
+  (segments->painter (list (make-segment (make-vect 0.0 0.0)
+                                         (make-vect 1.1 1.1))
+                           (make-segment (make-vect 0.0 0.1)
+                                         (make-vect 1.0 0.0)))))
+
+(define (draw-diamond f)
+  (segments->painter (list (make-segment (make-vect 0.5 0.0)
+                                         (make-vect 1.0 0.5))
+                           (make-segment (make-vect 1.0 0.5)
+                                         (make-vect 0.5 1.0))
+                           (make-segment (make-vect 0.5 1.0)
+                                         (make-vect 0.0 0.5))
+                           (make-segment (make-vect 0.0 0.5)
+                                         (make-vect 0.5 0.0)))))
+
+
+
+2.50
+(define (flip-horiz painter)
+  (transform-painter painter
+                     (make-vect 1.0 0.0)
+                     (make-vect 0.0 0.0)
+                     (make-vect 1.0 1.0)))
+
+(define (rotate180 painter)
+  (transform-painter painter
+                     (make-vect 1.0 1.0)
+                     (make-vect 0.0 1.0)
+                     (make-vect 1.0 0.0)))
+
+(define (rotate270 painter)
+  (tranform-painter painter
+                    (make-vect 0.0 1.0)
+                    (make-vect 0.0 0.0)
+                    (make-vect 1.0 1.0)))
+
+
+
+2.51
+(define (below painter1 painter2)
+  (let ((split-point (make-vect 0.0 0.5)))
+    (let ((paint-bottom (transform-painter painter1
+                                           (make-vect 0.0 0.0)
+                                           (make-vect 1.0 0.0)
+                                           split-point))
+          (paint-top (transform-painter painter2
+                                        split-point
+                                        (make-vect 1.0 0.5)
+                                        (make-vect 0.0 1.0))))
+      (lambda (frame)
+        (paint-bottom frame)
+        (paint-top frame)))))
+
+(define (below painter1 painter2)
+  (rotate90 (beside (rotate270 painter1)
+                    (rotate270 painter2))))
+
+
+
+2.52
+(define (corner-split painter n)
+  (if (= n 0)
+      painter
+      (let ((up (up-split painter (- n 1)))
+            (right (right-split painter (- n 1))))
+        (let ((top-left up)
+              (bottom-right right)
+              (corner (corner-split painter (- n 1))))
+          (beside (below painter top-left)
+                  (below bottom-right corner))))))
+
+(define (square-limit painter n)
+  (let ((quarter (corner-split painter n)))
+    (let ((half (beside quarter (flip-horiz quater))))
+      (below half (flip-vert half)))))
+
+
+
+53
+> (list 'a 'b 'c)
+(a b c)
+> (list (list 'george))
+((george))
+> (cadr '((x1 x2) (y1 y2)))
+(y1 y2)
+> (pair? (car '(a short list)))
+#f
+> (memq 'red '((red shoes) (blue socks)))
+#f
+> (memq 'red '(red shoes blue socks))
+(red shoes blue socks)
+
+
+
+2.54
+(define (_equal? a b)
+   (cond ((and (not (pair? a))
+               (not (pair? b))) (eq? a b))
+         ((and (pair? a)
+               (pair? b)) (and (_equal? (car a) (car b))
+                               (_equal? (cdr a) (cdr b))))
+         (else #f)))
+
+
+2.55
+''abc is equivalent to (quote (quote abc)), so (car (quote (quote abc))) will be evaluated as picking out the first part of pair (quote abc), which is quote
+
+
+
+2.56
+(define (make-exponentiation b e)
+  (cond ((or (=number? e 0)
+             (=number? b 1)) 1)
+        ((=number? e 1) b)
+        ((=number? b 0) 0)
+        (else (list '** b e))))
+(define (base exp)
+  (cadr exp))
+(define (exponent exp)
+  (caddr exp))
+(define (exponentiation? e)
+  (and (pair? e)
+       (eq? (car e) '**)))
+
+Adding a new clause to the cond special form of deriv:
+;; exponentiation
+((exponentiation? exp) (make-product 
+                        (make-product (exponent exp)
+                                      (make-exponentiation (base exp)
+                                                           (make-sum (exponent exp) -1)))
+
+
+
+2.57
+Just change procedures argend and multiplicand:
+(define (argend s)
+  (if (null? (cdddr s))
+      (caddr s)
+      (cons '+ (cddr s))))
+
+
+(define (multiplicand p)
+  (if (null? (cdddr p))
+      (caddr p)
+      (cons '* (cddr p))))
+
+
+2.58
+a). Change the representation of sums and products:
+(define (make-sum a1 a2)
+  (cond ((and (number? a1)
+              (number? a2)) (+ a1 a2))
+        ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        (else (list a1 '+ a2))))
+(define (addend s)
+  (car s))
+(define (argend s)
+  (caddr s))
+(define (sum? x)
+  (and (pair? x)
+       (eq? (cadr x) '+)))
+
+(define (make-product m1 m2)
+  (cond ((or (=number? m1 0)
+             (=number? m2 0)) 0)
+        ((=number? m1 1) m2)
+        ((=number? m2 1) m1)
+        ((and (number? m1)
+              (number? m2)) (* m1 m2))
+        (else (list m1 '* m2))))
+(define (multiplier p)
+  (car p))
+(define (multiplicand p)
+  (caddr p))
+(define (product? x)
+  (and (pair? x)
+       (eq? (cadr x) '*)))
+
+b). Change the representation of sum and product as before:
+Split the whole formula into pieces by '+:
+(define (addend s)
+  (define (iter form result)
+    (if (eq? (car form) '+)
+        (if (null? (cdr result))
+            (car result)
+            result)
+        (iter (cdr form) (append result (list (car form))))))
+  (iter s '()))
+  
+(define (argend s)
+  (let ((rest (cdr (memq '+ s))))
+    (if (null? (cdr rest))
+        (car rest)
+        rest)))
+
+(define (sum? s)
+  (memq '+ s))
+ 
+Product is similar:
+(define (multiplier p)
+  (define (iter form result)
+    (if (eq? (car form) '*)
+        (if (null? (cdr result))
+            (car result)
+            result)
+        (iter (cdr form) (append result (list (car form))))))
+  (iter p '()))
+
+(define (multiplicand p)
+  (let ((rest (cdr (memq '* p))))
+    (if (null? (cdr rest))
+        (car rest)
+        rest)))
+
+(define (product? x)
+  (memq '* x))
+
+
+
+2.59
+(define (union-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        ((element-of-set? (car set1) set2)
+         (union-set (cdr set1) set2))
+        (else (cons (car set1)
+                    (union-set (cdr set1) set2)))))
+
+
+
+2.60
+We need a procedure to eliminate the chosen element of set1 from set2 since the repeatition will lead to wrong result like:
+set1=(a a b b b b)
+set2=(c b)
+the result will be (b b b b) if we use the original procedure.
+
+(define (element-of-set? x set)
+  (cond ((null? set) #f)
+        ((equal? x (car set)) #t)
+        (else (element-of-set? x (cdr set)))))
+
+(define (adjoin-set x set)
+  (cons x set))
+
+(define (remove-element x set)
+  (cond ((null? set) '())
+        ((not (element-of-set? x set)) set)
+        ((equal? x (car set)) (cdr set))
+        (else (remove-element x (cdr set)))))
+
+(define (intersection-set set1 set2)
+  (cond ((or (null? set1) (null? set2)) '())
+        ((element-of-set? (car set1) set2)
+         (cons (car set1)
+               (intersection-set (cdr set1) (remove-element (car set1) set2))))
+        (else (intersection-set (cdr set1) set2))))
+
+(define (union-set set1 set2)
+  (append set1 set2))
+
+element-of-set?		O(n)
+adjoing-set			O(1)
+remove-element		O(n)
+intersection-set	O(n^3)
+union-set			O(n)
+
+
+
+2.61
+(define (adjoin-set x set)
+  (if (null? set) (list x)
+      (let ((t (car set)))
+        (cond ((= x t) set)
+              ((< x t) (cons x set))
+              (else (cons t (adjoin-set x (cdr set))))))))
+
+
+
+2.62
+(define (union-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        (else
+         (let ((x1 (car set1))
+               (x2 (car set2)))
+           (cond ((= x1 x2) (cons x1
+                                  (union-set (cdr set1)
+                                             (cdr set2))))
+                 ((< x1 x2) (cons x1
+                                  (union-set (cdr set1) set2)))
+                 ((> x1 x2) (cons x2
+                                  (union-set set1 (cdr set2)))))))))
+
+
+
+2.63
+a). The two procedures produces the same list for trees in Fig.2.16, also the same results for other trees.
+b). tree->list-1 costs O(nlogn) for the append call in each node visit. tree->list-2 costs O(n).
+
+
+
+2.64
+a). The procedure partial-tree runs like this:
+ 1. Calculate the size of the left subtree, i.e. the number of elements in the list to be used.
+ 2. Build left subtree. Recursively build the left subtree with left-size elements in the list.
+ 3. Get the built left subtree and remaining elements.
+ 4. Calculate the size of the right subtree.
+ 5. Build right subtree.
+ 6. Get the built right subtree and remaining elements. Cons things together.
+The tree built on (1 3 5 7 9 11) is:
+(5 (1 () (3 () ())) (9 (7 () ()) (11 () ())))
+
+b). Time complexity is Theta(n) by the Master Theorem.
+
+
+
+2.65
+(define (union-set set1 set2)
+  (define (merge list1 list2)
+    (cond ((null? list1) list2)
+          ((null? list2) list1)
+          (else
+           (let ((x1 (car list1))
+                 (x2 (car list2))
+                 (rest1 (cdr list1))
+                 (rest2 (cdr list2)))
+             (cond ((= x1 x2) (cons x1 (merge rest1 rest2)))
+                   ((< x1 x2) (cons x1 (merge rest1 list2)))
+                   (else (cons x2 (merge list1 rest2))))))))
+  (let ((list1 (tree->list-2 set1))
+        (list2 (tree->list-2 set2)))
+    (list->tree (merge list1 list2))))
+
+(define (intersection-set set1 set2)
+  (define (merge list1 list2)
+    (if (or (null? list1) (null? list2)) 
+        '()
+        (let ((x1 (car list1))
+              (x2 (car list2))
+              (rest1 (cdr list1))
+              (rest2 (cdr list2)))
+          (cond ((= x1 x2) (cons x1 (merge rest1 rest2)))
+                ((< x1 x2) (merge rest1 list2))
+                (else (merge list1 rest2))))))
+  (let ((list1 (tree->list-2 set1))
+        (list2 (tree->list-2 set2)))
+    (list->tree (merge list1 list2))))
+
+
+
+2.66
+(define (lookup key records)
+  (if (null? records)
+      #f
+      (let ((root (entry records)))
+        (cond ((= key root) root)
+              ((< key root) (lookup key (left-branch records)))
+              (else (lookup key (right-branch records)))))))
+
+
+2.67
+> (decode sample-message sample-tree)
+(A D A B B C A)
+
+
+
+2.68
+(define (encode-symbol symbol tree)
+  (if (leaf? tree)
+      '()
+      (let ((left (left-branch tree))
+            (right (right-branch tree)))
+        (cond ((element-of-set symbol (symbols left))
+               (cons '0 (encode-symbol symbol left)))
+              ((element-of-set symbol (symbols right))
+               (cons '1 (encode-symbol symbol right)))
+              (else (display "bad symbol -- encode-symbol")
+                    (display symbol)
+                    (newline))))))
+
+
+
+2.69
+(define (successive-merge pairs)
+  (if (null? (cdr pairs))
+      (car pairs)
+      (successive-merge (adjoin-set (make-code-tree (car pairs)
+                                                   (cadr pairs))
+                                   (cddr pairs)))))
+
+
+
+2.70
+The Huffman tree is:
+((leaf NA 16)
+ ((leaf YIP 9)
+  (((leaf A 2) ((leaf WAH 1) (leaf BOOM 1) (WAH BOOM) 2) (A WAH BOOM) 4)
+   ((leaf SHA 3) ((leaf JOB 2) (leaf GET 2) (JOB GET) 4) (SHA JOB GET) 7)
+   (A WAH BOOM SHA JOB GET)
+   11)
+  (YIP A WAH BOOM SHA JOB GET)
+  20)
+ (NA YIP A WAH BOOM SHA JOB GET)
+ 36)
+Encoding the messages we obtain:
+> (encode '(GET A JOB) tree)
+(1 1 1 1 1 1 1 0 0 1 1 1 1 0)
+> (encode '(SHA NA NA NA NA NA NA NA NA) tree)
+(1 1 1 0 0 0 0 0 0 0 0 0)
+> (encode '(WAH YIP YIP YIP YIP YIP YIP YIP YIP YIP) tree)
+(1 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0)
+> (encode '(SHA BOOM) tree)
+(1 1 1 0 1 1 0 1 1)
+14*2+12*2+23+9=84 bits needed while 3*36=108 bits needed is we use fixed-length encoding.
+
+
+
+2.71
+The sequence is always sorted since 2^i+2^(i+1)=3*2^i < 2^(i+2)=4*2^i.
+For n, n-1 bits are needed for the least frequent symbol, 1 bit for the most frequent symbol.
+
+
+
+2.72
+O(n) to encode the most frequent symbol, O(n^2) for the least.
+
+
+
+2.73
+a). The operation done by number? and variable? is not based on the type tag
+
+b). 
+(define (install-deriv-package)
+  (define (addend s) (car s))
+  (define (augend s) (cadr s))
+  (define (multiplier p) (car p))
+  (define (multiplicand p) (cadr p))
+  
+  (define (deriv-sum exp var)
+    (make-sum (deriv (addend exp) var)
+              (deriv (augend exp) var)))
+  (define (deriv-product exp var)
+    (make-sum
+     (make-product (multiplier exp)
+                   (deriv (multiplicand exp) var))
+     (make-product (deriv (multiplier exp) var)
+                   (multiplicand exp))))
+  (put 'deriv '+ deriv-sum)
+  (put 'deriv '* deriv-product)
+  'done)
+
+c).
+Add to the package:
+
+(define (base e) (car e))
+(define (exponent e) (cadr e))
+
+(define (deriv-exp exp var)
+  (make-product
+     (make-product (exponent exp)
+                   (make-exponentiation (base exp)
+                                        (make-sum (exponent exp) -1)))))
+(put 'deriv '** deriv-exp)
+
+d). The change won't affect the result of get and put.
+
+
+
+2.75
+(define (make-from-mag-ang x y)
+  (define (dispath op)
+    (cond ((eq? op 'real-part)
+           (* x (cos y)))
+          ((eq? op 'imag-part)
+           (* x (sin y)))
+          ((eq? op 'magnitude) x)
+          ((eq? op 'angle) y)
+          (else
+           (printf "Unknown op -- MAKE-FROM-MAG-ANG ~a\n" op))))
+  dispatch)
+
+
+
+2.76
+                   |       New data         |       New operation
+-------------------+------------------------+-------------------------
+                   | Modify all the generic | Include all possible 
+ Explicit dispatch | operations             | data types
+                   |                        |
+-------------------+------------------------+-------------------------
+                   | Call put to add an     | Call put to add an entry
+ Data-directed     | entry for each         | for each possible data
+                   | possible operation     | type
+-------------------+------------------------+-------------------------
+                   | Include all the        | Modify all the data type
+ Message-passing   | generic operations in  | definitions
+                   | the constructor        |
+
+Explicit dispatch and data-directed style are relatively good for newly added operations, while data-directed style and message-passing style are for newly added data types. (All: no need to modify the old ones.)
+
+
+
+2.77
+This works because if the additional code for the complex package is not added, when invoking 'magnitude', the only matching procedure is the two which are exported as interface in the two complex number packages. Of course it will then call 'apply-generic', but the evaluator cannot find a matching procedure with operation 'magnitude' and type-tag '(complex)'. So that's why the error comes out. When evaluating (magnitude z), the steps are something like this:
+
+(magnitude z) -> (apply-generic 'magnitude z) 
+              -> dispatch 'magnitude '(complex) -> magnitude             
+              -> (apply-generic 'magnitude z) 
+              -> dispatch 'magnitude '(rectangular) -> magnitude
+              -> (sqrt (+ (sqr (real-part z))
+                          (sqr (imag-part z))))
+------------------- 2 calls of apply-generic
+
+              -> (apply-generic 'real-part z)
+              -> dispatch 'real-part '(complex) -> real-part
+              -> (apply-generic 'real-part z)
+              -> dispatch 'real-part '(rectangular) -> real-part
+              -> 3 (the same for 4)
+------------------- 2x2=4 calls of apply-generic
+              -> (sqrt (+ (sqr 3) (sqr 4)))
+              -> 5
+So there're totally 6 calls of apply-generic
+              
+
+
+2.78
+(define (attach-tag type-tag content)
+  (if (number? content)
+      content
+      (cons type-tag content)))
+        
+
+(define (type-tag datum)
+  (cond ((number? datum) 'scheme-number)
+        ((pair? datum) (car datum))
+        (else (error "Cannot get tag"))))
+
+(define (content datum)
+  (cond ((number? datum) datum)
+        ((pair? datum) (cdr datum))
+        (else (error "Cannot get content"))))
+
+
+
+2.79
+(define (install-equality-test-package)
+  ;; Imported
+  (define (numer x)
+    ((get 'numer 'rational) x))
+  (define (denom x)
+    ((get 'denom 'rational) x))
+  (define (real-part z)
+    ((get 'real-part '(complex)) z))
+  (define (imag-part z)
+    ((get 'imag-part '(complex)) z))
+  ;; Internal
+  (define (equ-rat x y)
+    (and (= (numer x) (numer y))
+         (= (denom x) (denom y))))
+  (define (equ-cplx z1 z2)
+    (and (= (real-part z1) (real-part z2))
+         (= (imag-part z1) (imag-part z2))))
+  ;; Interface
+  (put 'equ? '(scheme-number scheme-number)
+       (lambda (x y) (= x y)))
+  (put 'equ? '(rational rational) equ-rat)
+  (put 'equ? '(complex complex) equ-cplx)
+  'done)
+
+
+
+2.80
+(define (install-equal-zero-test-package)
+  ;; Imported
+  (define (numer x)
+    ((get 'numer '(rational)) x))
+  (define (real-part z)
+    ((get 'real-part '(rectangular)) z))
+  (define (imag-part z)
+    ((get 'imag-part '(rectangular)) z))
+  (define (magnitude z)
+    ((get 'magnitude '(polar)) z))
+  ;; Internal
+  (define (=zero-rat x)
+    (= (numer x) 0))
+  (define (=zero-cplx-real-imag z)
+    (and (= (real-part z) 0)
+         (= (imag-part z) 0)))
+  (define (=zero-cplx-mag-ang z)
+    (= (magnitude z) 0))
+  (define (=zero-cplx z)
+    (apply-generic '=zero-helper z))
+  ;; These two things should be done in their own package
+  (put '=zero-helper '(rectangular) zero-cplx-real-imag)
+  (put '=zero-helper '(polar) zero-cplx-mag-ang)
+  ;; Interface
+  (put '=zero? '(scheme-number)
+       (lambda (x) (= x 0)))
+  (put '=zero? '(rational) =zero-rat)
+  (put '=zero? '(complex) =zero-cplx)
+  'done)
+
+
+
+2.81
+a).
+If we perform exp on two complex numbers, we'll get type-tags as (complex complex), which is extracted by apply-generic. Obviously there's no such procedure for those type-tags installed. So apply-generic will try type raising. We'll have complex as both type1 and type2, and smoothly a coercion procedure t1->t2 is found for converting type1 to type2 since Louis has installed his procedures. However those two types are equivalent, so we'll have another apply-generic call on the 'coerced' types, which leads to infinite recursion.
+
+b).
+If the actual procedure that will be dispatched is defined in some package and installed properly, everything will be fine. But if we cannot 'get' the target procedure from the table, apply-generic will report an error message since no coercion procedures are found.
+
+c).
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tag args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (if (= (length args) 2)
+              (let ((type1 (car type-tags))
+                    (type2 (cadr type-tags))
+                    (a1 (car args))
+                    (a2 (cadr args)))
+                (if (not (eq? type1 type2))
+                    (let ((t1->t2 (get-coercion type1 type2))
+                          (t2->t1 (get-coercion type2 type1)))
+                      (cond (t1->t2
+                             (apply-generic op (t1->t2 a1) a2))
+                            (t2->t1
+                             (apply-generic op a1 (t2->t1 a2)))
+                            (else
+                             (printf "No method for these types: ~a\n"
+                                 (list op type-tags)))))
+                    (printf "No method for these types: ~a\n"
+                            (list op type-tags))))
+              (printf "No method for these types: ~a\n"
+                      (list op type-tags)))))))
+
+
+
+2.82
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tag args)))
+    (let (proc (get op type-tags))
+      (if proc
+          (apply proc (map contents args))
+
+          ;; get-coercion-procs:
+          ;; Get the list of all coercion procedures
+          (let ((get-coercion-procs
+                 (lambda (target-type)
+                   (map 
+                    (lambda (arg-type)
+                      (if (eq? arg-type target-type)
+                          identity
+                          (get-coercion arg-type target-type)))
+                    type-tags))))
+
+            ;; Attention type-tags here is bound
+            (define (type-tags-iter type-tags)
+              (if (not (empty? type-tags))
+                  ;; Get the coercion procedures to the target type
+                  (let (coercion-procs
+                        (get-coercion-procs (car type-tags)))
+                    ;; If we have all the coercion procedures
+                    (if (not (member null coercion-procs))
+                        ;; Coerce them
+                        (apply-generic op (map apply coercion-procs args))
+                        ;; Or failed to coerce all parameters
+                        (type-tags-iter (cdr type-tags))))
+                  (printf "No method for these types ~a\n"
+                          (list op type-tags))))
+            (type-tags-iter type-tags))))))
+
+This procedure tries to coerce each parameter to the target type in turn, starting from the first one. It requires that we have all the possible coercion procedures. If any of them does not exist, the coercion will fail for the current turn. One situation that this strategy fails may look like this: we have several coercion procedures that can coerce data types to their parent types. But we cannot coerce them to each other if they are all children of a certain ancestor type.
