@@ -68,3 +68,14 @@
 		(assign val (reg product))
 		(goto (label expt-done))
 	expt-done)
+
+
+;; 5.5
+;; I have done this when I was learning assembly...-_-b
+
+
+;; 5.6
+;; In the block denoted by label "afterfib-n-1", the (restart continue) and
+;; (save continue) can both be removed since the address stored in continue
+;; register points to the outer level which will only be used as a return
+;; address after this whole Fib(n-1)+Fib(n-2) is computed.
