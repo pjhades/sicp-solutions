@@ -79,3 +79,25 @@
 ;; (save continue) can both be removed since the address stored in continue
 ;; register points to the outer level which will only be used as a return
 ;; address after this whole Fib(n-1)+Fib(n-2) is computed.
+
+
+;; 5.8
+;; Register 'a' will hold 3 since the labels are searched
+;; from A to Z. The new version of 'extract-labels' is:
+(define (extract-labels text receive)
+	;; 我擦! 这不是CPS嘛!
+	(if (null? text)
+		(receive '() '())
+		(extract-lables (cdr text)
+						(lambda (insts labels)
+							(let ((next-inst (car text)))
+								(if (symbol? next-inst)
+									(if (assoc next-inst labels)
+										(error "duplicate labels found -- assemble" next-inst)
+										(receive insts
+										 		 (cons (make-label-entry next-inst
+										 						         insts)
+											   		   labels)))
+									(receive (cons (make-instruction next-inst)
+												   insts)
+										     labels)))))))
