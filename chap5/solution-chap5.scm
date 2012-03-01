@@ -101,3 +101,88 @@
                                     (receive (cons (make-instruction next-inst)
                                                    insts)
                                              labels)))))))
+
+;; 5.9
+(define (make-operation-exp exp machine labels operations)
+    (let ((op (lookup-prim (operation-exp-op exp) operations))
+          (aprocs
+           (map (lambda (e)
+		   			(if (label-exp? e)
+						(error "can only operate registers and constants -- assemble")
+                		(make-primitive-exp e machine labels)))
+                (operation-exp-operands exp))))
+        (lambda ()
+            (apply op (map (lambda (p) (p)) aprocs)))))
+
+;; 5.11
+;; a)
+;; After label 'afterfib-n-2', these two instructions:
+(assign n (reg val))
+(restore val)
+;; intend to move the old value of 'val' to 'n' then
+;; save a new value into 'val'. This can be simplified by
+(restore n)
+
+;; b)
+;; note: changing the 'make-xxx' will leave the 
+;;       stack unmodified
+(define (make-save inst machine stack pc)
+    (let ((reg (get-register machine
+                             (stack-inst-reg-name inst))))
+        (lambda ()
+            (push stack (cons (stack-inst-reg-name inst)
+							  (get-contents reg)))
+            (advance-pc pc))))
+
+(define (make-restore inst machine stack pc)
+    (let ((reg (get-register machine
+                             (stack-inst-reg-name inst))))
+        (lambda ()
+			(let ((top (pop stack)))
+				(if (eq? (car top)
+						 (stack-inst-reg-name inst))
+            		(begin
+						(set-contents! reg (pop stack))
+            			(advance-pc pc))
+					(error "register doesn't match -- assemble" inst))))))
+
+;; c)
+;; add a stack to each of the register on register table
+(let ((the-ops
+          (list (list 'initialize-stack
+                    (lambda () 
+						(for-each (lambda (r)
+							((caddr r) 'initialize))
+							register-table)))))
+      (register-table
+	      ;; don't forget pc and flag
+          (list (list 'pc pc (make-stack)) 
+		        (list 'flag flag (make-stack)))))
+
+	;; ...
+)
+
+(define (allocate-register name)
+    (if (assoc name register-table)
+        (error "multiply defined register:" name)
+        (set! register-table
+              (cons (list name 
+			              (make-register name)
+						  (make-stack))
+                      register-table)))
+    'register-allocated)
+
+;; fetch the stack associated with each register
+(define (make-save inst machine stack pc)
+    (let ((reg (get-register machine
+                             (stack-inst-reg-name inst))))
+        (lambda ()
+            (push (caddr reg) (get-contents reg))
+            (advance-pc pc))))
+
+(define (make-restore inst machine stack pc)
+    (let ((reg (get-register machine
+                             (stack-inst-reg-name inst))))
+        (lambda ()
+            (set-contents! reg (pop (caddr reg)))
+            (advance-pc pc))))
