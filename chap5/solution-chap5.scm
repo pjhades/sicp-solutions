@@ -186,3 +186,130 @@
         (lambda ()
             (set-contents! reg (pop (caddr reg)))
             (advance-pc pc))))
+
+
+;; 5.12
+(define (make-new-machine)
+    (let ((pc (make-register 'pc))
+          (flag (make-register 'flag))
+          (stack (make-stack))
+          (the-instruction-sequence '())
+
+          ;; <<< exer 5.12
+          (all-insts '())
+          (goto-regs '())
+          (stack-regs '())
+          (reg-assign-src '()))
+          ;; >>> exer 5.12
+
+        (let ((the-ops
+                  (list (list 'initialize-stack
+                              (lambda () (stack 'initialze)))))
+              (register-table
+                  (list (list 'pc pc) (list 'flag flag))))
+
+            ;; <<< exer 5.12
+            (define (record-inst inst)
+                (let ((item (assoc (car inst) all-insts)))
+                    (if item
+                        (if (not (member inst (cdr item)))
+                            (set-cdr! item (cons inst (cdr item))))
+                        (set! all-insts
+                              (cons (list (car inst) inst)
+                                    all-insts)))))
+
+            (define (record-goto-reg inst)
+                (if (not (memq (cadadr inst) goto-regs))
+                    (set! goto-regs
+                          (cons (cadadr inst) goto-regs))))
+
+            (define (record-stack-reg inst)
+                (if (not (memq (cadr inst) stack-regs))
+                    (set! stack-regs
+                          (cons (cadr inst) stack-regs))))
+
+            (define (record-reg-assign-src inst)
+                (let ((item (assoc (cadr inst) reg-assign-src)))
+                    (if item 
+                        (if (not (member (caddr inst) (cdr item)))
+                            (set-cdr! item
+                                      (cons (caddr inst) (cdr item))))
+                        (set! reg-assign-src
+                              (cons (list (cadr inst)
+                                          (caddr inst))
+                                    reg-assign-src)))))
+            ;; >>> exer 5.12
+
+            ;; ... as before
+
+            (define (dispatch message)
+                (cond 
+                      ;; ... as before
+
+                      ;; >>> exer 5.12
+                      ((eq? message 'all-insts) all-insts)
+                      ((eq? message 'goto-regs) goto-regs)
+                      ((eq? message 'stack-regs) stack-regs)
+                      ((eq? message 'assign-src) reg-assign-src)
+
+                      ((eq? message 'record-inst) record-inst)
+                      ((eq? message 'record-goto-reg) record-goto-reg)
+                      ((eq? message 'record-stack-reg) record-stack-reg)
+                      ((eq? message 'record-reg-assign-src) record-reg-assign-src)
+                      ;; <<< exer 5.12
+
+                      (else (error "unknown request -- machine" message))))
+
+            dispatch)))
+
+;; modify the corresponding machine procedures
+(define (make-assign inst machine labels operations pc)
+    (let ((target (get-register machine (assign-reg-name inst)))
+          (value-exp (assign-value-exp inst)))
+        (let ((value-proc (if (operation-exp? value-exp)
+                              (make-operation-exp value-exp machine labels operations)
+                              (make-primitive-exp (car value-exp) machine labels))))
+            ;; >>> exer 5.12
+            ((machine 'record-reg-assign-src) inst)
+            ;; <<< exer 5.12
+            (lambda ()
+                (set-contents! target (value-proc))
+                (advance-pc pc)))))
+
+(define (make-goto inst machine labels pc)
+    (let ((dest (goto-dest inst)))
+        (cond ((label-exp? dest)
+               (let ((insts
+                     (lookup-label labels (label-exp-label dest))))
+                   (lambda () (set-contents! pc insts))))
+               ((register-exp? dest)
+               (let ((reg
+                     (get-register machine (register-exp-reg dest))))
+                   ;; >>> exer 5.12
+                   ((machine 'record-goto-reg) inst)
+                   ;; <<< exer 5.12
+                   (lambda () (set-contents! pc (get-contents reg)))))
+              (else (error "bad goto instruction -- assemble" inst)))))
+
+(define (goto-dest goto-instruction)
+    (cadr goto-instruction))
+
+(define (make-save inst machine stack pc)
+    (let ((reg (get-register machine
+                             (stack-inst-reg-name inst))))
+        ;; >>> exer 5.12
+        ((machine 'record-stack-reg) inst)
+        ;; <<< exer 5.12
+        (lambda ()
+            (push stack (get-contents reg))
+            (advance-pc pc))))
+
+(define (make-restore inst machine stack pc)
+    (let ((reg (get-register machine
+                             (stack-inst-reg-name inst))))
+        ;; >>> exer 5.12
+        ((machine 'record-stack-reg) inst)
+        ;; <<< exer 5.12
+        (lambda ()
+            (set-contents! reg (pop stack))
+            (advance-pc pc))))
