@@ -107,9 +107,9 @@
     (let ((op (lookup-prim (operation-exp-op exp) operations))
           (aprocs
            (map (lambda (e)
-		   			(if (label-exp? e)
-						(error "can only operate registers and constants -- assemble")
-                		(make-primitive-exp e machine labels)))
+                       (if (label-exp? e)
+                        (error "can only operate registers and constants -- assemble")
+                        (make-primitive-exp e machine labels)))
                 (operation-exp-operands exp))))
         (lambda ()
             (apply op (map (lambda (p) (p)) aprocs)))))
@@ -131,35 +131,35 @@
                              (stack-inst-reg-name inst))))
         (lambda ()
             (push stack (cons (stack-inst-reg-name inst)
-							  (get-contents reg)))
+                              (get-contents reg)))
             (advance-pc pc))))
 
 (define (make-restore inst machine stack pc)
     (let ((reg (get-register machine
                              (stack-inst-reg-name inst))))
         (lambda ()
-			(let ((top (pop stack)))
-				(if (eq? (car top)
-						 (stack-inst-reg-name inst))
-            		(begin
-						(set-contents! reg (pop stack))
-            			(advance-pc pc))
-					(error "register doesn't match -- assemble" inst))))))
+            (let ((top (pop stack)))
+                (if (eq? (car top)
+                         (stack-inst-reg-name inst))
+                    (begin
+                        (set-contents! reg (pop stack))
+                        (advance-pc pc))
+                    (error "register doesn't match -- assemble" inst))))))
 
 ;; c)
 ;; add a stack to each of the register on register table
 (let ((the-ops
           (list (list 'initialize-stack
                     (lambda () 
-						(for-each (lambda (r)
-							((caddr r) 'initialize))
-							register-table)))))
+                        (for-each (lambda (r)
+                            ((caddr r) 'initialize))
+                            register-table)))))
       (register-table
-	      ;; don't forget pc and flag
+          ;; don't forget pc and flag
           (list (list 'pc pc (make-stack)) 
-		        (list 'flag flag (make-stack)))))
+                (list 'flag flag (make-stack)))))
 
-	;; ...
+    ;; ...
 )
 
 (define (allocate-register name)
@@ -167,8 +167,8 @@
         (error "multiply defined register:" name)
         (set! register-table
               (cons (list name 
-			              (make-register name)
-						  (make-stack))
+                          (make-register name)
+                          (make-stack))
                       register-table)))
     'register-allocated)
 
