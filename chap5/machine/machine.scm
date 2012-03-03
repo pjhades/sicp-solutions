@@ -188,6 +188,16 @@
                           (else (iter (cdr insts) k))))
                 (iter the-instruction-sequence 0))
 
+            (define (cancel-all-breakpoints)
+                (define (iter insts)
+                    (if (null? insts)
+                        'done
+                        (begin
+                            (if (instruction-break (car insts))
+                                (set-instruction-break! (car insts) #f))
+                            (iter (cdr insts)))))
+                (iter the-instruction-sequence))
+
             (define (dispatch message)
                 (cond ((eq? message 'start)
                        (set-contents! pc the-instruction-sequence)
@@ -208,6 +218,7 @@
                       ((eq? message 'trace-reg-off) trace-reg-off)
                       ((eq? message 'set-breakpoint) set-breakpoint)
                       ((eq? message 'cancel-breakpoint) cancel-breakpoint)
+                      ((eq? message 'cancel-all-breakpoints) (cancel-all-breakpoints))
                       ((eq? message 'proceed) (execute #t))
                       ((eq? message 'inst-seq) the-instruction-sequence)
                       (else (error "unknown request -- machine" message))))
@@ -549,10 +560,12 @@
 
 (set-register-contents! fact-machine 'n 5)
 (fact-machine 'trace-on)
+((fact-machine 'set-breakpoint) 'fact-loop 1)
 ((fact-machine 'set-breakpoint) 'fact-loop 2)
+((fact-machine 'set-breakpoint) 'fact-loop 3)
+((fact-machine 'set-breakpoint) 'fact-loop 4)
+((fact-machine 'set-breakpoint) 'fact-loop 5)
 
-(start fact-machine)
-(get-contents ((fact-machine 'get-register) 'n))
-
-(fact-machine 'proceed)
-(get-contents ((fact-machine 'get-register) 'n))
+(p (fact-machine 'inst-seq))
+(fact-machine 'cancel-all-breakpoints)
+(p (fact-machine 'inst-seq))

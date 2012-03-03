@@ -673,6 +673,16 @@
                                (iter (cdr insts) (+ k 1))))
                           (else (iter (cdr insts) k))))
                 (iter the-instruction-sequence 0))
+
+            (define (cancel-all-breakpoints)
+                (define (iter insts)
+                    (if (null? insts)
+                        'done
+                        (begin
+                            (if (instruction-break (car insts))
+                                (set-instruction-break! (car insts) #f))
+                            (iter (cdr insts)))))
+                (iter the-instruction-sequence))
             ;; <<< exer 5.19
 
             (define (dispatch message)
@@ -681,6 +691,7 @@
                       ;; >>> exer 5.19
                       ((eq? message 'set-breakpoint) set-breakpoint)
                       ((eq? message 'cancel-breakpoint) cancel-breakpoint)
+                      ((eq? message 'cancel-all-breakpoints) (cancel-all-breakpoints))
                       ;; Proceeding a machine is just to resume
                       ;; execution from the pc position where we halted at
                       ((eq? message 'proceed) (execute #t))
