@@ -89,6 +89,8 @@
     (let ((pc (make-register 'pc))
           (flag (make-register 'flag))
           (stack (make-stack))
+          (inst-count 0)
+          (enable-trace #f)
           (the-instruction-sequence '()))
 
         (let ((the-ops
@@ -118,8 +120,17 @@
                     (if (null? insts)
                         'done
                         (begin
+                            (if enable-trace
+                                (printf "executing --> ~a\n" (caar insts)))
                             ((instruction-execution-proc (car insts)))
+                            (set! inst-count (+ inst-count 1))
                             (execute)))))
+
+            (define (print-inst-count)
+                (printf "~a instructions executed\n" inst-count))
+
+            (define (reset-inst-count)
+                (set! inst-count 0))
 
             (define (dispatch message)
                 (cond ((eq? message 'start)
@@ -133,7 +144,11 @@
                        (lambda (ops) (set! the-ops (append the-ops ops))))
                       ((eq? message 'stack) stack)
                       ((eq? message 'operations) the-ops)
-
+                      ((eq? message 'print-inst-count) (print-inst-count))
+                      ((eq? message 'reset-inst-count) (reset-inst-count))
+                      ((eq? message 'trace-on) (set! enable-trace #t))
+                      ((eq? message 'trace-off) (set! enable-trace #f))
+                      ((eq? message 'inst-sequence) the-instruction-sequence)
                       (else (error "unknown request -- machine" message))))
 
             dispatch)))
@@ -449,17 +464,13 @@
             base-case
                 (assign val (const 1))
                 (goto (reg continue))
-            fact-done
-                (perform (op print-stack-statistics)))))
+            fact-done)))
 
-(for-each (lambda (n)
-              (printf "computing ~a!\n" n)
-              (set-register-contents! fact-machine 'n n)
-              (start fact-machine)
-              (printf "result: ~a\n\n" (get-register-contents fact-machine 'val)))
-          '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16))
+(print-mpair-curly-braces #f)
+(set-register-contents! fact-machine 'n 10)
+(fact-machine 'trace-on)
+(start fact-machine)
+(get-register-contents fact-machine 'val)
+(fact-machine 'print-inst-count)
 
-; (set-register-contents! gcd-machine 'a 206)
-; (set-register-contents! gcd-machine 'b 40)
-; (start gcd-machine)
-; (get-register-contents gcd-machine 'a)
+(printf "~a\n" '(1 2 3 5))

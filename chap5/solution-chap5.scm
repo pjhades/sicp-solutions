@@ -395,7 +395,7 @@
           (else (error "unknown expression type -- assemble" exp))))
 
 
-;; exer 5.14
+;; 5.14
 (define fact-machine
     (make-machine
         '(val n continue)
@@ -417,3 +417,83 @@
 ;; Let f(n) be the number of pushes to compute n!.
 ;; Then we have f(n) = f(n-1) + 2 for pushing n and continue.
 ;; Solving this we obtain f(n) = 2n - 2
+
+
+
+;; 5.15
+(define (make-new-machine)
+    (let (
+          ;; ... 
+          ;; >>> exer 5.15
+          (inst-count 0)
+          ;; <<< exer 5.15
+          )
+
+        (let 
+            ;; ... as before
+            (define (execute)
+                (let ((insts (get-contents pc)))
+                    (if (null? insts)
+                        'done
+                        (begin
+                            ((instruction-execution-proc (car insts)))
+                            ;; >>> exer 5.15
+                            (set! inst-count (+ inst-count 1))
+                            ;; <<< exer 5.15
+                            (execute)))))
+
+            ;; >>> exer 5.15
+            (define (print-inst-count)
+                (printf "~a instructions executed\n" inst-count))
+
+            (define (reset-inst-count)
+                (set! inst-count 0))
+            ;; <<< exer 5.15
+
+            (define (dispatch message)
+                (cond 
+                      ;; ...
+                      ;; >>> exer 5.15
+                      ((eq? message 'print-inst-count) (print-inst-count))
+                      ((eq? message 'reset-inst-count) (reset-inst-count))
+                      ;; <<< exer 5.15
+
+                      (else (error "unknown request -- machine" message))))
+
+            dispatch)))
+
+
+;; 5.16
+(define (make-new-machine)
+    (let (
+          ;; >>> exer 5.16
+          (enable-trace #f)
+          ;; <<< exer 5.16
+          )
+        (let
+            ;; ... 
+            (define (execute)
+                (let ((insts (get-contents pc)))
+                    (if (null? insts)
+                        'done
+                        (begin
+                            ;; >>> exer 5.16
+                            (if enable-trace
+                                (printf "executing --> ~a\n" (caar insts)))
+                            ;; <<< exer 5.16
+                            ((instruction-execution-proc (car insts)))
+                            (set! inst-count (+ inst-count 1))
+                            (execute)))))
+            (define (dispatch message)
+                (cond ;; ...
+                      ;; >>> exer 5.16
+                      ((eq? message 'trace-on) (set! enable-trace #t))
+                      ((eq? message 'trace-off) (set! enable-trace #f))
+                      ;; <<< exer 5.16
+                      ;; ...
+                      ))
+            dispatch)))
+
+;; turn off the option before running the program
+;;since racket prints mpairs with curly braces
+(print-mpair-curly-braces #f)
