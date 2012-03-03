@@ -313,3 +313,83 @@
         (lambda ()
             (set-contents! reg (pop stack))
             (advance-pc pc))))
+
+
+;; 5.13
+;; delete the initialization in make-machine
+(define (make-machine register-names ops controller-text)
+    (let ((machine (make-new-machine)))
+        ((machine 'install-operations) ops)
+        ((machine 'install-instruction-sequence)
+         (assemble controller-text machine))
+        machine))
+
+;; add a message to expose the register-table
+(define (make-new-machine)
+    (let
+        ;; ... as before
+        (let 
+            ;; ... as before
+            (define (dispatch message)
+                (cond 
+                      ;; >>> exer 5.13
+                      ((eq? message 'register-table) register-table)
+                      ;; <<< exer 5.13
+                      (else (error "unknown request -- machine" message))))
+            dispatch)))
+
+;; allocate registers in each make-xxx function, that is,
+;; wherever 'get-register' is called
+(define (make-assign inst machine labels operations pc)
+    ;; >>> exer 5.13
+    (if (not (assoc (assign-reg-name inst) (machine 'register-table)))
+        ((machine 'allocate-register) (assign-reg-name inst)))
+    ;; <<< exer 5.13
+    (let 
+        ;; ... as before
+        ))
+
+(define (make-goto inst machine labels pc)
+    (let ((dest (goto-dest inst)))
+        (cond ((label-exp? dest)
+               ;; ... as before
+               ((register-exp? dest)
+               ;; >>> exer 5.13
+               (if (not (assoc (register-exp-reg dest) (machine 'register-table)))
+                   ((machine 'allocate-register) (register-exp-reg dest)))
+               ;; <<< exer 5.13
+               (let 
+                   ;; ... as before
+                   ))
+              (else (error "bad goto instruction -- assemble" inst)))))
+
+(define (make-save inst machine stack pc)
+    ;; >>> exer 5.13
+    (if (not (assoc (stack-inst-reg-name inst) (machine 'register-table)))
+        ((machine 'allocate-register) (stack-inst-reg-name inst)))
+    ;; <<< exer 5.13
+    (let 
+        ;; ... as before
+        ))
+
+(define (make-restore inst machine stack pc)
+    ;; >>> exer 5.13
+    (if (not (assoc (stack-inst-reg-name inst) (machine 'register-table)))
+        ((machine 'allocate-register) (stack-inst-reg-name inst)))
+    ;; <<< exer 5.13
+    (let 
+        ;; ... as before
+        ))
+
+(define (make-primitive-exp exp machine labels)
+    (cond 
+           ;; ... as before
+          ((register-exp? exp)
+           ;; >>> exer 5.13
+           (if (not (assoc (register-exp-reg exp) (machine 'register-table)))
+               ((machine 'allocate-register) (register-exp-reg exp)))
+           ;; <<< exer 5.13
+           (let 
+               ;; ... as before
+               )
+          (else (error "unknown expression type -- assemble" exp))))

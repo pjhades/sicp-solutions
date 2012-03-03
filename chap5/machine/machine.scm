@@ -56,7 +56,7 @@
 
         (define (dispatch message)
             (cond ((eq? message 'push) push)
-                  ((eq? message 'pop) pop)
+                  ((eq? message 'pop) (pop))
                   ((eq? message 'initialze) (initialize))
                   (else (error "unknown request -- stack" message))))
 
@@ -73,14 +73,7 @@
     (let ((pc (make-register 'pc))
           (flag (make-register 'flag))
           (stack (make-stack))
-          (the-instruction-sequence '())
-
-          ;; <<< exer 5.12
-          (all-insts '())
-          (goto-regs '())
-          (stack-regs '())
-          (reg-assign-src '()))
-          ;; >>> exer 5.12
+          (the-instruction-sequence '()))
 
         (let ((the-ops
                   (list (list 'initialize-stack
@@ -88,44 +81,12 @@
               (register-table
                   (list (list 'pc pc) (list 'flag flag))))
 
-            ;; <<< exer 5.12
-            (define (record-inst inst)
-                (let ((item (assoc (car inst) all-insts)))
-                    (if item
-                        (if (not (member inst (cdr item)))
-                            (set-cdr! item (cons inst (cdr item))))
-                        (set! all-insts
-                              (cons (list (car inst) inst)
-                                    all-insts)))))
-
-            (define (record-goto-reg inst)
-                (if (not (memq (cadadr inst) goto-regs))
-                    (set! goto-regs
-                          (cons (cadadr inst) goto-regs))))
-
-            (define (record-stack-reg inst)
-                (if (not (memq (cadr inst) stack-regs))
-                    (set! stack-regs
-                          (cons (cadr inst) stack-regs))))
-
-            (define (record-reg-assign-src inst)
-                (let ((item (assoc (cadr inst) reg-assign-src)))
-                    (if item 
-                        (if (not (member (caddr inst) (cdr item)))
-                            (set-cdr! item
-                                      (cons (caddr inst) (cdr item))))
-                        (set! reg-assign-src
-                              (cons (list (cadr inst)
-                                          (caddr inst))
-                                    reg-assign-src)))))
-            ;; >>> exer 5.12
-
             (define (allocate-register name)
                 (if (assoc name register-table)
                     (error "multiply defined register:" name)
                     (set! register-table
                           (cons (list name (make-register name)) 
-                                  register-table)))
+                                register-table)))
                 'register-allocated)
 
             (define (lookup-register name)
@@ -154,18 +115,6 @@
                        (lambda (ops) (set! the-ops (append the-ops ops))))
                       ((eq? message 'stack) stack)
                       ((eq? message 'operations) the-ops)
-
-                      ;; >>> exer 5.12
-                      ((eq? message 'all-insts) all-insts)
-                      ((eq? message 'goto-regs) goto-regs)
-                      ((eq? message 'stack-regs) stack-regs)
-                      ((eq? message 'assign-src) reg-assign-src)
-
-                      ((eq? message 'record-inst) record-inst)
-                      ((eq? message 'record-goto-reg) record-goto-reg)
-                      ((eq? message 'record-stack-reg) record-stack-reg)
-                      ((eq? message 'record-reg-assign-src) record-reg-assign-src)
-                      ;; <<< exer 5.12
 
                       (else (error "unknown request -- machine" message))))
 
@@ -245,7 +194,6 @@
 
 ;; return a function for each instruction type
 (define (make-execution-procedure inst labels machine pc flag stack ops)
-    ((machine 'record-inst) inst)
     (cond ((eq? (car inst) 'assign)
            (make-assign inst machine labels ops pc))
           ((eq? (car inst) 'test)
@@ -274,9 +222,6 @@
         (let ((value-proc (if (operation-exp? value-exp)
                               (make-operation-exp value-exp machine labels operations)
                               (make-primitive-exp (car value-exp) machine labels))))
-            ;; >>> exer 5.12
-            ((machine 'record-reg-assign-src) inst)
-            ;; <<< exer 5.12
             (lambda ()
                 (set-contents! target (value-proc))
                 (advance-pc pc)))))
@@ -323,9 +268,6 @@
                ((register-exp? dest)
                (let ((reg
                      (get-register machine (register-exp-reg dest))))
-                   ;; >>> exer 5.12
-                   ((machine 'record-goto-reg) inst)
-                   ;; <<< exer 5.12
                    (lambda () (set-contents! pc (get-contents reg)))))
               (else (error "bad goto instruction -- assemble" inst)))))
 
@@ -335,9 +277,6 @@
 (define (make-save inst machine stack pc)
     (let ((reg (get-register machine
                              (stack-inst-reg-name inst))))
-        ;; >>> exer 5.12
-        ((machine 'record-stack-reg) inst)
-        ;; <<< exer 5.12
         (lambda ()
             (push stack (get-contents reg))
             (advance-pc pc))))
@@ -345,9 +284,6 @@
 (define (make-restore inst machine stack pc)
     (let ((reg (get-register machine
                              (stack-inst-reg-name inst))))
-        ;; >>> exer 5.12
-        ((machine 'record-stack-reg) inst)
-        ;; <<< exer 5.12
         (lambda ()
             (set-contents! reg (pop stack))
             (advance-pc pc))))
@@ -374,8 +310,8 @@
                (lambda () c)))
           ((label-exp? exp)
            (let ((insts
-                     (lookup-label labels
-                                   (label-exp-label exp))))
+                  (lookup-label labels
+                                (label-exp-label exp))))
                (lambda () insts)))
           ((register-exp? exp)
            (let ((r (get-register machine
@@ -441,7 +377,8 @@
 (define fib-machine 
     (make-machine 
         '(val n continue) 
-        '((+ ,+) (- ,-) (< ,<)) 
+        ;'((+ ,+) (- ,-) (< ,<)) 
+        (list (list '+ +) (list '- -) (list '< <))
         '(  
             (assign continue (label fib-done)) 
             fib-loop 
@@ -471,16 +408,10 @@
                 (goto (reg continue))
             fib-done)))
 
-(display (fib-machine 'assign-src))
-(newline)
-(newline)
-(display (fib-machine 'goto-regs))
-(newline)
-(newline)
-(display (fib-machine 'stack-regs))
-(newline)
-(newline)
-(display (fib-machine 'all-insts))
+(set-register-contents! fib-machine 'n 6)
+(start fib-machine)
+(get-register-contents fib-machine 'val)
+
 ; (set-register-contents! gcd-machine 'a 206)
 ; (set-register-contents! gcd-machine 'b 40)
 ; (start gcd-machine)
