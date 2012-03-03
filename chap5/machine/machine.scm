@@ -1,6 +1,13 @@
 #lang racket/base
 (require r5rs/r5rs)
 
+(define (p seq)
+    (if (null? seq)
+        (printf "\n")
+        (begin (printf "~a\n" (car seq))
+               (p (cdr seq)))))
+
+
 (define (error msg . objs)
     (define (p lst)
         (if (null? lst)
@@ -20,6 +27,7 @@
         ((machine 'install-operations) ops)
         ((machine 'install-instruction-sequence)
          (assemble controller-text machine))
+        (p (machine 'inst-sequence))
         machine))
 
 (define (make-register name)
@@ -186,9 +194,14 @@
                                              (cons (make-label-entry next-inst
                                                                      insts)
                                                    labels))
-                                    (receive (cons (make-instruction next-inst)
+                                    ;; >>> exer 5.17
+                                    (receive (cons (make-instruction next-inst (car labels))
                                                    insts)
                                              labels)))))))
+                                    ;; <<< exer 5.17
+                                    ;(receive (cons (make-instruction next-inst)
+                                    ;               insts)
+                                    ;         labels)))))))
 
 (define (update-insts! insts labels machine)
     (let ((pc (get-register machine 'pc))
@@ -204,17 +217,33 @@
                         pc flag stack ops)))
             insts)))
 
-(define (make-instruction text)
-    (cons text '()))
+;; >>> exer 5.17
+(define (make-instruction text label)
+    (list text label '()))
+;; <<< exer 5.17
+;(define (make-instruction text)
+;    (cons text '()))
 
+;; >>> exer 5.17
 (define (instruction-text inst)
     (car inst))
+;; <<< exer 5.17
+;(define (instruction-text inst)
+;    (car inst))
 
+;; >>> exer 5.17
 (define (instruction-execution-proc inst)
-    (cdr inst))
+    (caddr inst))
+;; <<< exer 5.17
+;(define (instruction-execution-proc inst)
+;    (cdr inst))
 
+;; >>> exer 5.17
 (define (set-instruction-execution-proc! inst proc)
-    (set-cdr! inst proc))
+    (set-car! (cddr inst) proc))
+;; <<< exer 5.17
+;(define (set-instruction-execution-proc! inst proc)
+;    (set-cdr! inst proc))
 
 (define (make-label-entry label-name inst)
     (cons label-name inst))
@@ -394,6 +423,8 @@
 
 
 ;; test programs
+(print-mpair-curly-braces #f)
+
 (define gcd-machine
     (make-machine
         '(a b t)
@@ -438,8 +469,7 @@
             immediate-answer
                 (assign val (reg n))
                 (goto (reg continue))
-            fib-done
-                (perform (op print-stack-statistics)))))
+            fib-done)))
 
 (define fact-machine
     (make-machine
@@ -466,11 +496,11 @@
                 (goto (reg continue))
             fact-done)))
 
-(print-mpair-curly-braces #f)
-(set-register-contents! fact-machine 'n 10)
-(fact-machine 'trace-on)
-(start fact-machine)
-(get-register-contents fact-machine 'val)
-(fact-machine 'print-inst-count)
+(p (fact-machine 'inst-sequence))
 
-(printf "~a\n" '(1 2 3 5))
+;(set-register-contents! fact-machine 'n 10)
+;(fact-machine 'trace-on)
+;(start fact-machine)
+;(get-register-contents fact-machine 'val)
+;(fact-machine 'print-inst-count)
+
