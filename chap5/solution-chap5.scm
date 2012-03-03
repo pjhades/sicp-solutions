@@ -540,3 +540,22 @@
 (define (set-instruction-execution-proc! inst proc)
     (set-cdr! (cdr inst) proc))
 ;; <<< exer 5.17
+
+;; and we print the label when executing it
+(define (execute)
+    (let ((insts (get-contents pc)))
+        (if (null? insts)
+            'done
+            (begin
+                (if enable-trace
+                    ;; >>> exer 5.17
+                    (printf "executing --> ~a: ~a\n" (cadar insts) (caar insts)))
+                    ;; <<< exer 5.17
+                ((instruction-execution-proc (car insts)))
+                (set! inst-count (+ inst-count 1))
+                (execute)))))
+
+
+
+;; 5.18
+

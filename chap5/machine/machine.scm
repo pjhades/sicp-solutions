@@ -129,7 +129,7 @@
                         'done
                         (begin
                             (if enable-trace
-                                (printf "executing --> ~a\n" (caar insts)))
+                                (printf "executing --> ~a: ~a\n" (cadar insts) (caar insts)))
                             ((instruction-execution-proc (car insts)))
                             (set! inst-count (+ inst-count 1))
                             (execute)))))
@@ -502,11 +502,10 @@
                 (goto (reg continue))
             fact-done)))
 
-;(p (fact-machine 'inst-sequence))
 
-;(set-register-contents! fact-machine 'n 10)
-;(fact-machine 'trace-on)
-;(start fact-machine)
-;(get-register-contents fact-machine 'val)
-;(fact-machine 'print-inst-count)
+(set-register-contents! fact-machine 'n 10)
+(fact-machine 'trace-on)
+(start fact-machine)
+(get-register-contents fact-machine 'val)
+(fact-machine 'print-inst-count)
 
