@@ -27,15 +27,21 @@
         ((machine 'install-operations) ops)
         ((machine 'install-instruction-sequence)
          (assemble controller-text machine))
-        (p (machine 'inst-sequence))
         machine))
 
 (define (make-register name)
-    (let ((contents '*unassigned*))
+    (let ((contents '*unassigned*)
+          (enable-trace #f))
         (define (dispatch message)
             (cond ((eq? message 'get) contents)
                   ((eq? message 'set)
-                   (lambda (value) (set! contents value)))
+                   (lambda (value) 
+                       (if enable-trace
+                           (printf "[trace] assign register ~a: ~a --> ~a\n" 
+                                   name contents value))
+                       (set! contents value)))
+                  ((eq? message 'trace-on)  (set! enable-trace #t))
+                  ((eq? message 'trace-off)  (set! enable-trace #f))
                   (else
                    (error "unknown request -- register" message))))
         dispatch))
@@ -74,7 +80,7 @@
             'done)
 
         (define (print-statistics)
-            (printf "total-pushes=~a max-depth=~a\n" 
+            (printf "total-pushes: ~a\nmax-depth: ~a\n" 
                     number-pushes max-depth))
 
         (define (dispatch message)
@@ -129,7 +135,7 @@
                         'done
                         (begin
                             (if enable-trace
-                                (printf "executing --> ~a: ~a\n" (cadar insts) (caar insts)))
+                                (printf "[trace] execute --> ~a: ~a\n" (cadar insts) (caar insts)))
                             ((instruction-execution-proc (car insts)))
                             (set! inst-count (+ inst-count 1))
                             (execute)))))
@@ -139,6 +145,12 @@
 
             (define (reset-inst-count)
                 (set! inst-count 0))
+ 
+            (define (trace-reg-on name)
+                ((lookup-register name) 'trace-on))
+
+            (define (trace-reg-off name)
+                ((lookup-register name) 'trace-off))
 
             (define (dispatch message)
                 (cond ((eq? message 'start)
@@ -156,7 +168,8 @@
                       ((eq? message 'reset-inst-count) (reset-inst-count))
                       ((eq? message 'trace-on) (set! enable-trace #t))
                       ((eq? message 'trace-off) (set! enable-trace #f))
-                      ((eq? message 'inst-sequence) the-instruction-sequence)
+                      ((eq? message 'trace-reg-on) trace-reg-on)
+                      ((eq? message 'trace-reg-off) trace-reg-off)
                       (else (error "unknown request -- machine" message))))
 
             dispatch)))
@@ -190,7 +203,6 @@
                         (lambda (insts labels)
                             (let ((next-inst (car text)))
                                 (if (symbol? next-inst)
-                                    ;; >>> exer 5.17
                                     (begin
                                         (for-each (lambda (ins)
                                                       (if (eq? (cadr ins) '*n/a*)
@@ -200,11 +212,6 @@
                                                  (cons (make-label-entry next-inst
                                                                          insts)
                                                        labels)))
-                                    ;; <<< exer 5.17
-                                    ;(receive insts
-                                    ;         (cons (make-label-entry next-inst
-                                    ;                                 insts)
-                                    ;               labels))
                                     (receive (cons (make-instruction next-inst '*n/a*)
                                                    insts)
                                              labels)))))))
@@ -223,33 +230,17 @@
                         pc flag stack ops)))
             insts)))
 
-;; >>> exer 5.17
 (define (make-instruction text label)
     (cons text (cons label '())))
-;; <<< exer 5.17
-;(define (make-instruction text)
-;    (cons text '()))
 
-;; >>> exer 5.17
 (define (instruction-text inst)
     (car inst))
-;; <<< exer 5.17
-;(define (instruction-text inst)
-;    (car inst))
 
-;; >>> exer 5.17
 (define (instruction-execution-proc inst)
     (cddr inst))
-;; <<< exer 5.17
-;(define (instruction-execution-proc inst)
-;    (cdr inst))
 
-;; >>> exer 5.17
 (define (set-instruction-execution-proc! inst proc)
     (set-cdr! (cdr inst) proc))
-;; <<< exer 5.17
-;(define (set-instruction-execution-proc! inst proc)
-;    (set-cdr! inst proc))
 
 (define (make-label-entry label-name inst)
     (cons label-name inst))
@@ -502,9 +493,10 @@
                 (goto (reg continue))
             fact-done)))
 
-
-(set-register-contents! fact-machine 'n 10)
+(set-register-contents! fact-machine 'n 5)
 (fact-machine 'trace-on)
+((fact-machine 'trace-reg-on) 'val)
+((fact-machine 'trace-reg-on) 'n)
 (start fact-machine)
 (get-register-contents fact-machine 'val)
 (fact-machine 'print-inst-count)

@@ -558,4 +558,47 @@
 
 
 ;; 5.18
+;; modify each register
+(define (make-register name)
+    (let ((contents '*unassigned*)
+          ;; >>> exer 5.18
+          (enable-trace #f))
+          ;; <<< exer 5.18
+        (define (dispatch message)
+            (cond ((eq? message 'get) contents)
+                  ((eq? message 'set)
+                   (lambda (value) 
+                       (if enable-trace
+                           ;; >>> exer 5.18
+                           (printf "[trace] assign register ~a: ~a --> ~a\n" 
+                                   name contents value))
+                           ;; <<< exer 5.18
+                       (set! contents value)))
+                  ;; >>> exer 5.18
+                  ((eq? message 'trace-on)  (set! enable-trace #t))
+                  ((eq? message 'trace-off)  (set! enable-trace #f))
+                  ;; <<< exer 5.18
+                  (else
+                   (error "unknown request -- register" message))))
+        dispatch))
 
+;; add new interfaces
+(define (make-new-machine)
+    (let 
+        ;; ... as before
+        (let 
+            ;; ... as before    
+            ;; >>> exer 5.18
+            (define (trace-reg-on name)
+                ((lookup-register name) 'trace-on))
+            (define (trace-reg-off name)
+                ((lookup-register name) 'trace-off))
+            ;; <<< exer 5.18
+            (define (dispatch message)
+                (cond ;; ...
+                      ;; >>> exer 5.18
+                      ((eq? message 'trace-reg-on) trace-reg-on)
+                      ((eq? message 'trace-reg-off) trace-reg-off)
+                      ;; <<< exer 5.18
+                      (else (error "unknown request -- machine" message))))
+            dispatch)))
