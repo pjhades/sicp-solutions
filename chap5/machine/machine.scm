@@ -39,25 +39,41 @@
     ((register 'set) value))
 
 (define (make-stack)
-    (let ((s '()))
+    (let ((s '())
+          (number-pushes 0)
+          (max-depth 0)
+          (current-depth 0))
+
         (define (push x)
-            (set! s (cons x s)))
+            (set! s (cons x s))
+            (set! number-pushes (+ number-pushes 1))
+            (set! current-depth (+ current-depth 1))
+            (set! max-depth (max max-depth current-depth)))
 
         (define (pop)
             (if (null? s)
                 (error "empty stack -- pop")
                 (let ((top (car s)))
                     (set! s (cdr s))
+                    (set! current-depth (- current-depth 1))
                      top)))
 
         (define (initialize)
             (set! s '())
+            (set! number-pushes 0)
+            (set! max-depth 0)
+            (set! current-depth 0)
             'done)
+
+        (define (print-statistics)
+            (printf "total-pushes=~a max-depth=~a\n" 
+                    number-pushes max-depth))
 
         (define (dispatch message)
             (cond ((eq? message 'push) push)
                   ((eq? message 'pop) (pop))
                   ((eq? message 'initialze) (initialize))
+                  ((eq? message 'print-statistics) (print-statistics))
                   (else (error "unknown request -- stack" message))))
 
         dispatch))
@@ -77,7 +93,9 @@
 
         (let ((the-ops
                   (list (list 'initialize-stack
-                              (lambda () (stack 'initialze)))))
+                              (lambda () (stack 'initialze)))
+                        (list 'print-stack-statistics
+                              (lambda () (stack 'print-statistics)))))
               (register-table
                   (list (list 'pc pc) (list 'flag flag))))
 
@@ -377,10 +395,9 @@
 (define fib-machine 
     (make-machine 
         '(val n continue) 
-        ;'((+ ,+) (- ,-) (< ,<)) 
         (list (list '+ +) (list '- -) (list '< <))
         '(  
-            (assign continue (label fib-done)) 
+                (assign continue (label fib-done)) 
             fib-loop 
                 (test (op <) (reg n) (const 2)) 
                 (branch (label immediate-answer)) 
@@ -406,11 +423,41 @@
             immediate-answer
                 (assign val (reg n))
                 (goto (reg continue))
-            fib-done)))
+            fib-done
+                (perform (op print-stack-statistics)))))
 
-(set-register-contents! fib-machine 'n 6)
-(start fib-machine)
-(get-register-contents fib-machine 'val)
+(define fact-machine
+    (make-machine
+        '(val n continue)
+        (list (list '= =) (list '- -) (list '* *))
+        '(
+                (perform (op initialize-stack))
+                (assign continue (label fact-done))
+            fact-loop
+                (test (op =) (reg n) (const 1))
+                (branch (label base-case))
+                (save continue)
+                (save n)
+                (assign n (op -) (reg n) (const 1))
+                (assign continue (label after-fact))
+                (goto (label fact-loop))
+            after-fact
+                (restore n)
+                (restore continue)
+                (assign val (op *) (reg n) (reg val))
+                (goto (reg continue))
+            base-case
+                (assign val (const 1))
+                (goto (reg continue))
+            fact-done
+                (perform (op print-stack-statistics)))))
+
+(for-each (lambda (n)
+              (printf "computing ~a!\n" n)
+              (set-register-contents! fact-machine 'n n)
+              (start fact-machine)
+              (printf "result: ~a\n\n" (get-register-contents fact-machine 'val)))
+          '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16))
 
 ; (set-register-contents! gcd-machine 'a 206)
 ; (set-register-contents! gcd-machine 'b 40)

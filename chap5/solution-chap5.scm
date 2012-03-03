@@ -393,3 +393,27 @@
                ;; ... as before
                )
           (else (error "unknown expression type -- assemble" exp))))
+
+
+;; exer 5.14
+(define fact-machine
+    (make-machine
+        '(val n continue)
+        (list (list '= =) (list '- -) (list '* *))
+        '(
+                (perform (op initialize-stack))
+                ;; ... as before
+            fact-done
+                (perform (op print-stack-statistics)))))
+
+(for-each (lambda (n)
+              (printf "computing ~a!\n" n)
+              (set-register-contents! fact-machine 'n n)
+              (start fact-machine)
+              (printf "result: ~a\n\n" (get-register-contents fact-machine 'val)))
+          '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16))
+
+;; Note that the nunber of pushes equals the maximum depth.
+;; Let f(n) be the number of pushes to compute n!.
+;; Then we have f(n) = f(n-1) + 2 for pushing n and continue.
+;; Solving this we obtain f(n) = 2n - 2
