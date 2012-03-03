@@ -195,12 +195,12 @@
           (stack (make-stack))
           (the-instruction-sequence '())
 
-          ;; <<< exer 5.12
+          ;; >>> exer 5.12
           (all-insts '())
           (goto-regs '())
           (stack-regs '())
           (reg-assign-src '()))
-          ;; >>> exer 5.12
+          ;; <<< exer 5.12
 
         (let ((the-ops
                   (list (list 'initialize-stack
@@ -208,7 +208,7 @@
               (register-table
                   (list (list 'pc pc) (list 'flag flag))))
 
-            ;; <<< exer 5.12
+            ;; >>> exer 5.12
             (define (record-inst inst)
                 (let ((item (assoc (car inst) all-insts)))
                     (if item
@@ -238,7 +238,7 @@
                               (cons (list (cadr inst)
                                           (caddr inst))
                                     reg-assign-src)))))
-            ;; >>> exer 5.12
+            ;; <<< exer 5.12
 
             ;; ... as before
 
@@ -602,3 +602,97 @@
                       ;; <<< exer 5.18
                       (else (error "unknown request -- machine" message))))
             dispatch)))
+
+
+
+;; 5.19
+;; Add interfaces and procedures to allow adding 
+;; and removing breakpoints. The list format of an instruction is:
+;;
+;; (text label execution-procedure break?)
+;;
+;; where break? is a boolean that indicates if an instruction
+;; is set a breakpoint on
+(define (make-new-machine)
+    (let 
+        ;; ... as before
+        (let 
+            ;; ... as before
+
+            ;; >>> exer 5.19
+            ;; Modify the execute procedure, adding a param resume?
+            ;; which indicates if this execution is to resume a
+            ;; breakpoint. if resume? is #f, the machine will halt
+            ;; when seeing a breakpoint. We also print the breakpoints
+            ;; when tracing is enabled.
+            (define (execute resume?)
+                (let ((insts (get-contents pc)))
+                    (if (null? insts)
+                        'done
+                        (begin
+                            (cond ((and (not resume?) (instruction-break (car insts)))
+                                   (printf "[break] ~a: ~a\n"
+                                           (instruction-label (car insts))
+                                           (instruction-text (car insts))))
+                                  (else 
+                                   (if enable-trace
+                                       (begin (printf "[trace] execute --> ~a: ~a" 
+                                                      (instruction-label (car insts)) 
+                                                      (instruction-text (car insts)))
+                                              (if (instruction-break (car insts))
+                                                  (printf " <B>\n")
+                                                  (printf "\n"))))
+                                   ((instruction-execution-proc (car insts)))
+                                   (set! inst-count (+ inst-count 1))
+                                   (execute #f)))))))
+
+            ;; set a new breakpoint at the n-th instruction after label
+            (define (set-breakpoint label n)
+                (define (iter insts k)
+                    (cond ((null? insts)
+                           (error (format "no such instruction to set breakpoint on -- machine ~a:~a"
+                                          label n)))
+                          ((eq? (instruction-label (car insts))
+                                label)
+                           (if (= (+ k 1) n)
+                               (set-instruction-break! (car insts) #t)
+                               (iter (cdr insts) (+ k 1))))
+                          (else (iter (cdr insts) k))))
+                (iter the-instruction-sequence 0))
+
+            ;; remove a breakpoint at the n-th instruction after label
+            (define (cancel-breakpoint label n)
+                (define (iter insts k)
+                    (cond ((null? insts)
+                           (error (format "no such breakpoint to cancel -- machine ~a:~a"
+                                          label n)))
+                          ((eq? (instruction-label (car insts))
+                                label)
+                           (if (= (+ k 1) n)
+                               (set-instruction-break! (car insts) #f)
+                               (iter (cdr insts) (+ k 1))))
+                          (else (iter (cdr insts) k))))
+                (iter the-instruction-sequence 0))
+            ;; <<< exer 5.19
+
+            (define (dispatch message)
+                (cond 
+                      ;; ...
+                      ;; >>> exer 5.19
+                      ((eq? message 'set-breakpoint) set-breakpoint)
+                      ((eq? message 'cancel-breakpoint) cancel-breakpoint)
+                      ;; Proceeding a machine is just to resume
+                      ;; execution from the pc position where we halted at
+                      ((eq? message 'proceed) (execute #t))
+                      ;; <<< exer 5.19
+                      (else (error "unknown request -- machine" message))))
+            dispatch)))
+
+;; some syntax procedures
+;; >>> exer 5.19
+(define (set-instruction-break! inst break)
+    (set-car! (cdddr inst) break))
+
+(define (instruction-break inst)
+    (cadddr inst))
+;; <<< exer 5.19

@@ -80,7 +80,7 @@
             'done)
 
         (define (print-statistics)
-            (printf "total-pushes: ~a\nmax-depth: ~a\n" 
+            (printf "total pushes: ~a\nmax depth: ~a\n" 
                     number-pushes max-depth))
 
         (define (dispatch message)
@@ -129,16 +129,26 @@
                         (cadr val)
                         (error "unknown register:" name))))
 
-            (define (execute)
+            (define (execute resume?)
                 (let ((insts (get-contents pc)))
                     (if (null? insts)
                         'done
                         (begin
-                            (if enable-trace
-                                (printf "[trace] execute --> ~a: ~a\n" (cadar insts) (caar insts)))
-                            ((instruction-execution-proc (car insts)))
-                            (set! inst-count (+ inst-count 1))
-                            (execute)))))
+                            (cond ((and (not resume?) (instruction-break (car insts)))
+                                   (printf "[break] ~a: ~a\n"
+                                           (instruction-label (car insts))
+                                           (instruction-text (car insts))))
+                                  (else 
+                                   (if enable-trace
+                                       (begin (printf "[trace] execute --> ~a: ~a" 
+                                                      (instruction-label (car insts)) 
+                                                      (instruction-text (car insts)))
+                                              (if (instruction-break (car insts))
+                                                  (printf " <B>\n")
+                                                  (printf "\n"))))
+                                   ((instruction-execution-proc (car insts)))
+                                   (set! inst-count (+ inst-count 1))
+                                   (execute #f)))))))
 
             (define (print-inst-count)
                 (printf "~a instructions executed\n" inst-count))
@@ -152,10 +162,36 @@
             (define (trace-reg-off name)
                 ((lookup-register name) 'trace-off))
 
+            (define (set-breakpoint label n)
+                (define (iter insts k)
+                    (cond ((null? insts)
+                           (error (format "no such instruction to set breakpoint on -- machine ~a:~a"
+                                          label n)))
+                          ((eq? (instruction-label (car insts))
+                                label)
+                           (if (= (+ k 1) n)
+                               (set-instruction-break! (car insts) #t)
+                               (iter (cdr insts) (+ k 1))))
+                          (else (iter (cdr insts) k))))
+                (iter the-instruction-sequence 0))
+
+            (define (cancel-breakpoint label n)
+                (define (iter insts k)
+                    (cond ((null? insts)
+                           (error (format "no such breakpoint to cancel -- machine ~a:~a"
+                                          label n)))
+                          ((eq? (instruction-label (car insts))
+                                label)
+                           (if (= (+ k 1) n)
+                               (set-instruction-break! (car insts) #f)
+                               (iter (cdr insts) (+ k 1))))
+                          (else (iter (cdr insts) k))))
+                (iter the-instruction-sequence 0))
+
             (define (dispatch message)
                 (cond ((eq? message 'start)
                        (set-contents! pc the-instruction-sequence)
-                       (execute))
+                       (execute #f))
                       ((eq? message 'install-instruction-sequence)
                        (lambda (seq) (set! the-instruction-sequence seq)))
                       ((eq? message 'allocate-register) allocate-register)
@@ -170,6 +206,10 @@
                       ((eq? message 'trace-off) (set! enable-trace #f))
                       ((eq? message 'trace-reg-on) trace-reg-on)
                       ((eq? message 'trace-reg-off) trace-reg-off)
+                      ((eq? message 'set-breakpoint) set-breakpoint)
+                      ((eq? message 'cancel-breakpoint) cancel-breakpoint)
+                      ((eq? message 'proceed) (execute #t))
+                      ((eq? message 'inst-seq) the-instruction-sequence)
                       (else (error "unknown request -- machine" message))))
 
             dispatch)))
@@ -199,22 +239,23 @@
     ;; 我擦! CPS有木有!
     (if (null? text)
         (receive '() '())
-        (extract-labels (cdr text)
-                        (lambda (insts labels)
-                            (let ((next-inst (car text)))
-                                (if (symbol? next-inst)
-                                    (begin
-                                        (for-each (lambda (ins)
-                                                      (if (eq? (cadr ins) '*n/a*)
-                                                          (set-car! (cdr ins) next-inst)))
-                                                  insts)
-                                        (receive insts
-                                                 (cons (make-label-entry next-inst
-                                                                         insts)
-                                                       labels)))
-                                    (receive (cons (make-instruction next-inst '*n/a*)
-                                                   insts)
-                                             labels)))))))
+        (extract-labels 
+            (cdr text)
+            (lambda (insts labels)
+                (let ((next-inst (car text)))
+                    (if (symbol? next-inst)
+                        (begin
+                            (for-each (lambda (ins)
+                                          (if (eq? (instruction-label ins) '*n/a*)
+                                              (set-instruction-label! ins next-inst)))
+                                      insts)
+                            (receive insts
+                                     (cons (make-label-entry next-inst
+                                                             insts)
+                                           labels)))
+                        (receive (cons (make-instruction next-inst '*n/a*)
+                                       insts)
+                                 labels)))))))
 
 (define (update-insts! insts labels machine)
     (let ((pc (get-register machine 'pc))
@@ -231,16 +272,28 @@
             insts)))
 
 (define (make-instruction text label)
-    (cons text (cons label '())))
+    (list text label '() #f))
 
 (define (instruction-text inst)
     (car inst))
 
+(define (instruction-label inst)
+    (cadr inst))
+
+(define (instruction-break inst)
+    (cadddr inst))
+
 (define (instruction-execution-proc inst)
-    (cddr inst))
+    (caddr inst))
 
 (define (set-instruction-execution-proc! inst proc)
-    (set-cdr! (cdr inst) proc))
+    (set-car! (cddr inst) proc))
+
+(define (set-instruction-label! inst label)
+    (set-car! (cdr inst) label))
+
+(define (set-instruction-break! inst break)
+    (set-car! (cdddr inst) break))
 
 (define (make-label-entry label-name inst)
     (cons label-name inst))
@@ -493,11 +546,13 @@
                 (goto (reg continue))
             fact-done)))
 
+
 (set-register-contents! fact-machine 'n 5)
 (fact-machine 'trace-on)
-((fact-machine 'trace-reg-on) 'val)
-((fact-machine 'trace-reg-on) 'n)
-(start fact-machine)
-(get-register-contents fact-machine 'val)
-(fact-machine 'print-inst-count)
+((fact-machine 'set-breakpoint) 'fact-loop 2)
 
+(start fact-machine)
+(get-contents ((fact-machine 'get-register) 'n))
+
+(fact-machine 'proceed)
+(get-contents ((fact-machine 'get-register) 'n))
