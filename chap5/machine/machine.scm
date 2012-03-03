@@ -190,18 +190,24 @@
                         (lambda (insts labels)
                             (let ((next-inst (car text)))
                                 (if (symbol? next-inst)
-                                    (receive insts
-                                             (cons (make-label-entry next-inst
-                                                                     insts)
-                                                   labels))
                                     ;; >>> exer 5.17
-                                    (receive (cons (make-instruction next-inst (car labels))
+                                    (begin
+                                        (for-each (lambda (ins)
+                                                      (if (eq? (cadr ins) '*n/a*)
+                                                          (set-car! (cdr ins) next-inst)))
+                                                  insts)
+                                        (receive insts
+                                                 (cons (make-label-entry next-inst
+                                                                         insts)
+                                                       labels)))
+                                    ;; <<< exer 5.17
+                                    ;(receive insts
+                                    ;         (cons (make-label-entry next-inst
+                                    ;                                 insts)
+                                    ;               labels))
+                                    (receive (cons (make-instruction next-inst '*n/a*)
                                                    insts)
                                              labels)))))))
-                                    ;; <<< exer 5.17
-                                    ;(receive (cons (make-instruction next-inst)
-                                    ;               insts)
-                                    ;         labels)))))))
 
 (define (update-insts! insts labels machine)
     (let ((pc (get-register machine 'pc))
@@ -219,7 +225,7 @@
 
 ;; >>> exer 5.17
 (define (make-instruction text label)
-    (list text label '()))
+    (cons text (cons label '())))
 ;; <<< exer 5.17
 ;(define (make-instruction text)
 ;    (cons text '()))
@@ -233,14 +239,14 @@
 
 ;; >>> exer 5.17
 (define (instruction-execution-proc inst)
-    (caddr inst))
+    (cddr inst))
 ;; <<< exer 5.17
 ;(define (instruction-execution-proc inst)
 ;    (cdr inst))
 
 ;; >>> exer 5.17
 (define (set-instruction-execution-proc! inst proc)
-    (set-car! (cddr inst) proc))
+    (set-cdr! (cdr inst) proc))
 ;; <<< exer 5.17
 ;(define (set-instruction-execution-proc! inst proc)
 ;    (set-cdr! inst proc))
@@ -496,7 +502,7 @@
                 (goto (reg continue))
             fact-done)))
 
-(p (fact-machine 'inst-sequence))
+;(p (fact-machine 'inst-sequence))
 
 ;(set-register-contents! fact-machine 'n 10)
 ;(fact-machine 'trace-on)

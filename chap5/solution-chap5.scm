@@ -501,4 +501,42 @@
 
 
 ;; 5.17
+;; If we see a label, we attach it to all the instructions
+;; after it, until we reach the next label, i.e. an instruction
+;; which has already been attached a label.
+(define (extract-labels text receive)
+    (if (null? text)
+        (receive '() '())
+        (extract-labels (cdr text)
+                        (lambda (insts labels)
+                            (let ((next-inst (car text)))
+                                (if (symbol? next-inst)
+                                    ;; >>> exer 5.17
+                                    (begin
+                                        (for-each (lambda (ins)
+                                                      (if (eq? (cadr ins) '*n/a*)
+                                                          (set-car! (cdr ins) next-inst)))
+                                                  insts)
+                                        (receive insts
+                                                 (cons (make-label-entry next-inst
+                                                                         insts)
+                                                       labels)))
+                                    ;; <<< exer 5.17
+                                    (receive (cons (make-instruction next-inst '*n/a*)
+                                                   insts)
+                                             labels)))))))
 
+;; and modify the syntax procedures
+;; >>> exer 5.17
+(define (make-instruction text label)
+    (cons text (cons label '())))
+
+(define (instruction-text inst)
+    (car inst))
+
+(define (instruction-execution-proc inst)
+    (cddr inst))
+
+(define (set-instruction-execution-proc! inst proc)
+    (set-cdr! (cdr inst) proc))
+;; <<< exer 5.17
