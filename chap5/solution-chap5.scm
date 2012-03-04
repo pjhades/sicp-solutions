@@ -707,3 +707,76 @@
 (define (instruction-break inst)
     (cadddr inst))
 ;; <<< exer 5.19
+
+
+
+;; 5.21
+;; a)
+(define count-leave-machine-recursive
+    (make-machine
+        '(val tree)
+        `(('+ ,+) ('null? ,null?) ('pair? ,pair?))
+        '(
+                (perform (op initialize-stack))
+                (assign continue (label all-done))
+            loop
+                (test (op null?) (reg tree))
+                (branch (label return-0))
+                (test (op pair?) (reg tree))
+                (branch (label count-children))
+                (assign val (const 1))
+                (goto (reg continue))
+            count-children
+                (save continue)
+                (assign continue (label done-left))
+                (save tree)
+                (assign tree (op car) (reg tree))
+                (goto (label loop))
+            done-left
+                (assign continue (label done-right))
+                (restore tree)
+                (assign tree (op cdr) (reg tree))
+                (save val)
+                (goto (label loop))
+            done-right
+                (assign tree (reg val))
+                (restore val)
+                (restore continue)
+                (assign val (op +) (reg val) (reg tree))
+                (goto (reg continue))
+            return-0
+                (assign val (const 0))
+                (goto (reg continue))
+            all-done)))
+
+;; b)
+(define count-leave-machine-iterative
+    (make-machine
+        '(val tree n)
+        `(('+ ,+) ('null? ,null?) ('pair? ,pair?))
+        '(
+                (perform (op initialize-stack))
+                (assign n (const 0))
+                (assign continue (label all-done))
+            loop
+                (test (op null?) (reg tree))
+                (branch (label return-n))
+                (test (op pair?) (reg tree))
+                (branch (label count-children))
+                (assign val (op +) (reg n) (const 1))
+                (goto (reg continue))
+            count-chiledren
+                (save continue)
+                (assign continue (label done-left))
+                (save tree)
+                (assign tree (op car) (reg tree))
+                (goto (label loop))
+            done-left
+                (restore tree)
+                (assign tree (op cdr) (reg tree))
+                (assign n (reg val))
+                (goto (label loop))
+            return-n
+                (assign val (reg n))
+                (goto (reg continue))
+            all-done)))
