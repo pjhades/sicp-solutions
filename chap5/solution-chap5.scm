@@ -780,3 +780,49 @@
                 (assign val (reg n))
                 (goto (reg continue))
             all-done)))
+
+
+;; 5.22
+;; machine for append
+(define append-machine
+    (make-machine
+        '(val x y)
+        `(('null? ,null?))
+        '(
+                (perform (op initialize-stack))
+                (assign continue (label all-done))
+            loop
+                (test (op null?) (reg x))
+                (branch return-y)
+                (save continue)
+                (assign continue (label done-cdr))
+                (save x)
+                (assign x (op cdr) (reg x))
+                (goto (label loop))
+            done-cdr
+                (restore x)
+                (restore continue)
+                (assign x (op car) (reg x))
+                (assign val (op cons) (reg x) (reg val))
+                (goto (reg continue))
+            return-y
+                (assign val (reg y))
+                (goto (reg continue))
+            all-done)))
+
+;; machine for append!
+(define append!-machine
+    (make-machine
+        '(val x y tmp)
+        `(('null? ,null?))
+        '(
+            last-pair
+                (assign tmp (op cdr) (reg x))
+                (test (op null?) (reg tmp))
+                (goto (label return-x))
+                (assign x (op cdr) (reg x))
+                (goto (label last-pair))
+            return-x
+                (assign val (reg x))
+                (perform (op set-cdr!) (reg val) (reg y))
+            all-done)))
