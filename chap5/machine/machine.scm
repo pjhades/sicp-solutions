@@ -856,6 +856,12 @@
 
 (define (cond-actions clause) (cdr clause))
 
+(define (cond-first-clause clauses) (car clauses))
+
+(define (cond-rest-clauses clauses) (cdr clauses))
+
+(define (cond-last-clause? clauses) (null? (cdr clauses)))
+
 (define (cond->if exp)
   (expand-clauses (cond-clauses exp)))
 
@@ -1181,6 +1187,7 @@
 
 (define eceval-operations
     `(
+      (eq? ,eq?)
       (self-evaluating? ,self-evaluating?)
       (prompt-for-input ,prompt-for-input)
       (read ,read)
@@ -1192,6 +1199,7 @@
       (assignment? ,assignment?)
       (definition? ,definition?)
       (if? ,if?)
+      (cond? ,cond?)
       (lambda? ,lambda?)
       (begin? ,begin?)
       (application? ,application?)
@@ -1230,6 +1238,13 @@
       (definition-value ,definition-value)
       (define-variable! ,define-variable!)
       (user-print ,user-print)
+      (cond->if ,cond->if)
+      (cond-clauses ,cond-clauses)
+      (cond-predicate ,cond-predicate)
+      (cond-actions ,cond-actions)
+      (cond-first-clause ,cond-first-clause)
+      (cond-rest-clauses ,cond-rest-clauses)
+      (cond-last-clause? ,cond-last-clause?)
       ))
 
 
@@ -1266,6 +1281,8 @@
                 (branch (label ev-definition))
                 (test (op if?) (reg exp))
                 (branch (label ev-if))
+                (test (op cond?) (reg exp))
+                (branch (label ev-cond))
                 (test (op lambda?) (reg exp))
                 (branch (label ev-lambda))
                 (test (op begin?) (reg exp))
@@ -1390,6 +1407,59 @@
             ev-if-consequent
                 (assign exp (op if-consequent) (reg exp))
                 (goto (label eval-dispatch))
+
+            ev-cond
+                ;;(assign exp (op cond->if) (reg exp))
+                ;;(goto (label ev-if))
+
+                ;; unev: all clauses
+                (assign unev (op cond-clauses) (reg exp))
+                ;; exp: first clause
+            ev-cond-clauses
+                (assign exp (op cond-first-clause) (reg unev))
+                (test (op cond-last-clause?) (reg unev))
+                (branch (label ev-cond-last-clause))
+                (save exp)
+                (save env)
+                (save unev)
+                (save continue)
+                (assign exp (op cond-predicate) (reg exp))
+                (assign continue (label ev-cond-decide))
+                (goto (label eval-dispatch))
+            ev-cond-last-clause
+                (assign val (op cond-predicate) (reg exp))
+                (test (op eq?) (reg val) (const else))
+                (branch (label ev-cond-actions))
+                (save exp)
+                (save env)
+                (save unev)
+                (save continue)
+                (assign exp (op cond-predicate) (reg exp))
+                (assign continue (label ev-cond-last-decide))
+                (goto (label eval-dispatch))
+            ev-cond-decide
+                (restore continue)
+                (restore unev)
+                (restore env)
+                (restore exp)
+                (test (op true?) (reg val))
+                (branch (label ev-cond-actions))
+                (assign unev (op cond-rest-clauses) (reg unev))
+                (goto (label ev-cond-clauses))
+            ev-cond-last-decide
+                (restore continue)
+                (restore unev)
+                (restore env)
+                (restore exp)
+                (test (op true?) (reg val))
+                (branch (label ev-cond-actions))
+                (assign val (const #f))
+                (goto (reg continue))
+            ev-cond-actions
+                (assign unev (op cond-actions) (reg exp))
+                ;; get back to continue after sequence is done
+                (save continue)
+                (goto (label ev-sequence))
 
             ev-assignment
                 (assign unev (op assignment-variable) (reg exp))

@@ -826,3 +826,30 @@
                 (assign val (reg x))
                 (perform (op set-cdr!) (reg val) (reg y))
             all-done)))
+
+
+;; I'll directly use the procedures defined in Chapter 4
+;; in the following solutions without explicit declaration.
+
+
+;; 5.23
+(define eceval
+    ;; ...
+            eval-dispatch
+            ;; ...
+                ;; >>> exer 5.23
+                (test (op cond?) (reg exp))
+                (branch (label ev-cond))
+                ;; <<< exer 5.23
+            ;; ...
+            ;; >>> exer 5.23
+            ev-cond
+                (assign exp (op cond->if) (reg exp))
+                (goto (label ev-if))
+            ;; <<< exer 5.23
+    ;; ...
+            )
+
+
+
+;; 5.24
