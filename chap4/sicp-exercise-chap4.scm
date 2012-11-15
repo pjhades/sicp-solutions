@@ -652,3 +652,30 @@
   (cond ...
         ((let? exp) (analyze-application (let->combination exp)))
         ...))
+
+
+;; exercise 4.35
+(define (an-integer-between i j)
+  (require (<= i j))
+  (amb i (an-integer-between (+ i 1) j)))
+
+
+;; exercise 4.36
+;; According to DFS, amb tries to search for an answer along the DFS tree.
+;; So for a particular i and j, amb will spend its whole life on looking for
+;; a solution by traversing all possible values of k, which is impossible.
+;; We have to adjust the searching strategy.
+(define (a-pythagorean-triple-starting-from low)
+  (let* ((k (an-integer-starting-from low))
+         (i (an-integer-between low k))
+         (j (an-integer-between i k)))
+    (require (= (+ (* i i) (* j j)) (* k k)))
+    (list i j k)))
+
+
+;; exercise 4.37
+;; Yes, this modified version may do better.
+;; In this version, we do not need to go over all values in [j, high] in order
+;; to find k. We first test if i*i + j*j exceeds the range. If not, we test
+;; if its square root is an integer. The complexity is reduced from O((high - low)^3)
+;; to O((high - low)^2).
